@@ -46,19 +46,19 @@ mqtt:
 ota:
 
 output:
-  - platform: gpio
+  - platform: esp8266_pwm
     pin: GPIO3
     inverted: true
     id: led5
-  - platform: gpio
+  - platform: esp8266_pwm
     pin: GPIO5
     inverted: true
     id: led4
-  - platform: gpio
+  - platform: esp8266_pwm
     pin: GPIO12
     inverted: true
     id: led3
-  - platform: gpio
+  - platform: esp8266_pwm
     pin: GPIO14
     inverted: true
     id: led2
@@ -67,13 +67,23 @@ output:
     id: pwm
     power_supply: relay
     min_power: ${pwm_min_power}
+  - platform: esp8266_pwm
+    pin: GPIO4
+    inverted: true
+    id: red_led
+  - platform: template
+    id: template_output
+    type: float
+    write_action:
+      - output.set_level:
+          id: pwm
+          level: !lambda return state;
 
 light:
   - id: dimmer
     platform: monochromatic
-    output_id: light_output
     name: ${friendly_name}
-    output: pwm
+    output: template_output
     gamma_correct: ${gamma_correct}
     default_transition_length: ${no_delay}
 
@@ -219,20 +229,9 @@ interval:
     automation_id: update_leds_steps
     then:
       - lambda: |-
-          if (id(dimmer).current_values.is_on()) {
-            id(dimmer_lvl) = id(dimmer).current_values.get_brightness();
-          }
-          if (id(dimmer_lvl) > .19) { id(led2).turn_on(); }
-          if (id(dimmer_lvl) < .20) { id(led2).turn_off(); }
-          if (id(dimmer_lvl) > .39) { id(led3).turn_on(); }
-          if (id(dimmer_lvl) < .40) { id(led3).turn_off(); }
-          if (id(dimmer_lvl) > .59) { id(led4).turn_on(); }
-          if (id(dimmer_lvl) < .60) { id(led4).turn_off(); }
-          if (id(dimmer_lvl) > .79) { id(led5).turn_on(); }
-          if (id(dimmer_lvl) < .80) { id(led5).turn_off(); }
-          if (!id(dimmer).current_values.is_on()) {
-            id(led2).turn_off();
-            id(led3).turn_off();
-            id(led4).turn_off();
-            id(led5).turn_off();
-          }
+          id(dimmer_lvl) = id(dimmer).current_values.get_brightness();
+          id(red_led).set_level(id(dimmer_lvl) == 0.0f ? 0.5 : 0.0f);
+          id(led2).set_level(id(dimmer_lvl) * 5 - 1);
+          id(led3).set_level(id(dimmer_lvl) * 5 - 2);
+          id(led4).set_level(id(dimmer_lvl) * 5 - 3);
+          id(led5).set_level(id(dimmer_lvl) * 5 - 4);

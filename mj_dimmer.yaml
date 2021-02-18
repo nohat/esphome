@@ -46,44 +46,56 @@ mqtt:
 ota:
 
 output:
-  - platform: esp8266_pwm
+  - id: led5
     pin: GPIO3
+    platform: esp8266_pwm
     inverted: true
-    id: led5
-  - platform: esp8266_pwm
+
+  - id: led4
     pin: GPIO5
+    platform: esp8266_pwm
     inverted: true
-    id: led4
-  - platform: esp8266_pwm
+
+  - id: led3
     pin: GPIO12
+    platform: esp8266_pwm
     inverted: true
-    id: led3
-  - platform: esp8266_pwm
+
+  - id: led2
     pin: GPIO14
+    platform: esp8266_pwm
     inverted: true
-    id: led2
-  - platform: esp8266_pwm
+
+  - id: phys_pwm
     pin: GPIO13
-    id: pwm
+    platform: esp8266_pwm
     power_supply: relay
     min_power: ${pwm_min_power}
-  - platform: esp8266_pwm
+
+  - id: red_led
     pin: GPIO4
+    platform: esp8266_pwm
     inverted: true
-    id: red_led
-  - platform: template
-    id: template_output
+
+  - id: virtual_dimmer_output
+    platform: template
     type: float
     write_action:
-      - output.set_level:
-          id: pwm
-          level: !lambda return state;
+      - globals.set:
+          id: vdimmer_lvl
+          value: !lambda return state;
 
 light:
-  - id: dimmer
+  - id: physical_dimmer
     platform: monochromatic
-    name: ${friendly_name}
-    output: template_output
+    name: Physical Dimmer
+    output: phys_pwm
+    gamma_correct: ${gamma_correct}
+    default_transition_length: ${no_delay}
+  - id: virtual_dimmer
+    platform: monochromatic
+    name: Virtual Dimmer
+    output: virtual_dimmer_output
     gamma_correct: ${gamma_correct}
     default_transition_length: ${no_delay}
 
@@ -109,12 +121,12 @@ binary_sensor:
       then:
         - if:
             condition:
-              light.is_on: dimmer
+              light.is_on: virtual_dimmer
             then:
               - lambda: |-
-                  auto bri = id(dimmer).current_values.get_brightness();
+                  auto bri = id(virtual_dimmer).current_values.get_brightness();
                   id(action_start_bri) = bri;
-                  auto call = id(dimmer).turn_on();
+                  auto call = id(virtual_dimmer).turn_on();
                   call.set_brightness(1.0);
                   call.set_publish(false);
                   auto transition_length = (1.0 - bri) * id(full_dim_dur_ms);
@@ -125,24 +137,27 @@ binary_sensor:
                   id: action_start_bri
                   value: "-1"
               - light.turn_on:
-                  id: dimmer
+                  id: virtual_dimmer
                   brightness: ${default_bri_up}
                   transition_length: ${transition_length}
+              - lambda: !lambda id(physical_dimmer).publish_state();
     on_release:
       then:
         - lambda: |-
             auto start_bri = id(action_start_bri);
-            auto new_bri = id(dimmer).current_values.get_brightness();
+            auto new_bri = id(virtual_dimmer).current_values.get_brightness();
             if (start_bri < 0) return;
             auto level_delta = std::abs(new_bri - start_bri);
             if (level_delta > 0 && level_delta < 0.1) {
               new_bri = start_bri + 0.1;
             }
             new_bri = esphome::clamp(new_bri, 0.01, 1.0f);
-            auto call = id(dimmer).turn_on();
+            auto call = id(virtual_dimmer).turn_on();
             call.set_brightness(new_bri);
             call.set_transition_length(0);
             call.perform();
+            id(physical_dimmer).publish_state();
+
   - platform: gpio
     pin:
       number: GPIO1
@@ -155,12 +170,12 @@ binary_sensor:
       then:
         - if:
             condition:
-              light.is_on: dimmer
+              light.is_on: virtual_dimmer
             then:
               - lambda: |-
-                  auto bri = id(dimmer).current_values.get_brightness();
+                  auto bri = id(virtual_dimmer).current_values.get_brightness();
                   id(action_start_bri) = bri;
-                  auto call = id(dimmer).turn_on();
+                  auto call = id(virtual_dimmer).turn_on();
                   call.set_brightness(0.01);
                   call.set_publish(false);
                   auto transition_length = bri * id(full_dim_dur_ms);
@@ -171,24 +186,27 @@ binary_sensor:
                   id: action_start_bri
                   value: "-1"
               - light.turn_on:
-                  id: dimmer
+                  id: virtual_dimmer
                   brightness: ${default_bri_down}
                   transition_length: ${transition_length}
+              - lambda: !lambda id(physical_dimmer).publish_state();
+
     on_release:
       then:
         - lambda: |-
             auto start_bri = id(action_start_bri);
-            auto new_bri = id(dimmer).current_values.get_brightness();
+            auto new_bri = id(virtual_dimmer).current_values.get_brightness();
             if (start_bri < 0) return;
             auto level_delta = std::abs(new_bri - start_bri);
             if (level_delta > 0 && level_delta < 0.1) {
               new_bri = start_bri - 0.1;
             }
             new_bri = esphome::clamp(new_bri, 0.01, 1.0f);
-            auto call = id(dimmer).turn_on();
+            auto call = id(virtual_dimmer).turn_on();
             call.set_brightness(new_bri);
             call.set_transition_length(0);
             call.perform();
+            id(physical_dimmer).publish_state();
   - platform: gpio
     pin:
       number: GPIO15
@@ -200,7 +218,7 @@ binary_sensor:
     on_press:
       then:
         - light.toggle:
-            id: dimmer
+            id: virtual_dimmer
     on_click:
       min_length: ${long_press_min}
       max_length: ${long_press_max}
@@ -209,12 +227,16 @@ binary_sensor:
             id: action_start_bri
             value: "-1"
         - light.turn_on:
-            id: dimmer
+            id: virtual_dimmer
             brightness: ${default_bri}
             transition_length: ${transition_length}
+        - lambda: !lambda id(physical_dimmer).publish_state();
 
 globals:
-  - id: dimmer_lvl
+  - id: pdimmer_lvl
+    type: float
+    initial_value: "1.0"
+  - id: vdimmer_lvl
     type: float
     initial_value: "1.0"
   - id: action_start_bri
@@ -222,16 +244,36 @@ globals:
   - id: full_dim_dur_ms
     type: float
     initial_value: "3000"
+  - id: multiphase_dimmer_phases
+    type: uint8_t
+    initial_value: "2"
+  - id: multiphase_dimmer_position
+    type: uint8_t
+    initial_value: "1"
 
 interval:
+  - id: synchronize_dimmers
+    interval: 10ms
+    then:
+      - lambda: |-
+          auto offset = id(multiphase_dimmer_position) - 1;
+          auto factor = id(multiphase_dimmer_phases);
+          auto new_pdimmer_lvl = clamp(id(vdimmer_lvl) * factor - offset, 0, 1);
+          if (id(pdimmer_lvl) == new_pdimmer_lvl) return;
+          id(pdimmer_lvl) = new_pdimmer_lvl;
+          auto call = id(physical_dimmer).make_call();
+          call.set_state(new_pdimmer_lvl > 0);
+          call.set_brightness(new_pdimmer_lvl);
+          call.set_publish(false);
+          call.set_transition_length(0);
+          call.perform();
   - interval: 10ms
     id: update_leds_interval
     automation_id: update_leds_steps
     then:
       - lambda: |-
-          id(dimmer_lvl) = id(dimmer).current_values.get_brightness();
-          id(red_led).set_level(id(dimmer_lvl) == 0.0f ? 0.5 : 0.0f);
-          id(led2).set_level(id(dimmer_lvl) * 5 - 1);
-          id(led3).set_level(id(dimmer_lvl) * 5 - 2);
-          id(led4).set_level(id(dimmer_lvl) * 5 - 3);
-          id(led5).set_level(id(dimmer_lvl) * 5 - 4);
+          id(red_led).set_level(id(vdimmer_lvl) == 0.0f ? 0.5 : 0.0f);
+          id(led2).set_level(id(vdimmer_lvl) * 5 - 1);
+          id(led3).set_level(id(vdimmer_lvl) * 5 - 2);
+          id(led4).set_level(id(vdimmer_lvl) * 5 - 3);
+          id(led5).set_level(id(vdimmer_lvl) * 5 - 4);

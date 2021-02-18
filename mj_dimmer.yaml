@@ -1,0 +1,238 @@
+---
+substitutions:
+  device_name: test_dimmer # hostname & entity_id
+  friendly_name: Test Dimmer # Displayed in HA frontend
+  pwm_min_power: 1% # keep dimming functional at lowest levels
+  gamma_correct: "1.0"
+  no_delay: 0s # transition when changing dimmer_lvl & relay delay
+  transition_length: .5s # transition when turning on/off
+  long_press_min: .4s # minimum time to activate long-press action
+  long_press_max: 2s # maximum time to activate long-press action
+  default_bri_up: 100% # default brightness for turn on by up button
+  default_bri_down: 33% # default brightness for turn on by down button
+  default_bri: 50% # default brightness for turn on by long press main button
+
+esphome:
+  # https://esphome.io/components/esphome
+  name: ${device_name}
+  platform: ESP8266
+  board: esp01_1m
+  esp8266_restore_from_flash: true
+
+wifi:
+  ssid: "iot153"
+  password: "mjunhybgt"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${friendly_name}_AP
+    password: "CheZUQdIYjry"
+
+web_server:
+  port: 80
+
+captive_portal:
+
+logger:
+
+# Enable Home Assistant API
+api:
+
+mqtt:
+  id: mqtt_client
+  broker: 192.168.8.6
+  discovery: false
+
+ota:
+
+output:
+  - platform: gpio
+    pin: GPIO3
+    inverted: true
+    id: led5
+  - platform: gpio
+    pin: GPIO5
+    inverted: true
+    id: led4
+  - platform: gpio
+    pin: GPIO12
+    inverted: true
+    id: led3
+  - platform: gpio
+    pin: GPIO14
+    inverted: true
+    id: led2
+  - platform: esp8266_pwm
+    pin: GPIO13
+    id: pwm
+    power_supply: relay
+    min_power: ${pwm_min_power}
+
+light:
+  - id: dimmer
+    platform: monochromatic
+    output_id: light_output
+    name: ${friendly_name}
+    output: pwm
+    gamma_correct: ${gamma_correct}
+    default_transition_length: ${no_delay}
+
+power_supply:
+  - id: relay
+    pin:
+      number: GPIO16
+      inverted: true
+    enable_time: ${no_delay}
+    keep_on_time: ${no_delay}
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      inverted: true
+      mode: INPUT_PULLUP
+    name: ${friendly_name} Up Button
+    mqtt_id: up_button_mqtt
+    id: up_button
+    internal: false
+    on_press:
+      then:
+        - if:
+            condition:
+              light.is_on: dimmer
+            then:
+              - lambda: |-
+                  auto bri = id(dimmer).current_values.get_brightness();
+                  id(action_start_bri) = bri;
+                  auto call = id(dimmer).turn_on();
+                  call.set_brightness(1.0);
+                  call.set_publish(false);
+                  auto transition_length = (1.0 - bri) * id(full_dim_dur_ms);
+                  call.set_transition_length(transition_length);
+                  call.perform();
+            else:
+              - globals.set:
+                  id: action_start_bri
+                  value: "-1"
+              - light.turn_on:
+                  id: dimmer
+                  brightness: ${default_bri_up}
+                  transition_length: ${transition_length}
+    on_release:
+      then:
+        - lambda: |-
+            auto start_bri = id(action_start_bri);
+            auto new_bri = id(dimmer).current_values.get_brightness();
+            if (start_bri < 0) return;
+            auto level_delta = std::abs(new_bri - start_bri);
+            if (level_delta > 0 && level_delta < 0.1) {
+              new_bri = start_bri + 0.1;
+            }
+            new_bri = esphome::clamp(new_bri, 0.01, 1.0f);
+            auto call = id(dimmer).turn_on();
+            call.set_brightness(new_bri);
+            call.set_transition_length(0);
+            call.perform();
+  - platform: gpio
+    pin:
+      number: GPIO1
+      inverted: true
+      mode: INPUT_PULLUP
+    name: ${friendly_name} Down Button
+    id: down_button
+    internal: false
+    on_press:
+      then:
+        - if:
+            condition:
+              light.is_on: dimmer
+            then:
+              - lambda: |-
+                  auto bri = id(dimmer).current_values.get_brightness();
+                  id(action_start_bri) = bri;
+                  auto call = id(dimmer).turn_on();
+                  call.set_brightness(0.01);
+                  call.set_publish(false);
+                  auto transition_length = bri * id(full_dim_dur_ms);
+                  call.set_transition_length(transition_length);
+                  call.perform();
+            else:
+              - globals.set:
+                  id: action_start_bri
+                  value: "-1"
+              - light.turn_on:
+                  id: dimmer
+                  brightness: ${default_bri_down}
+                  transition_length: ${transition_length}
+    on_release:
+      then:
+        - lambda: |-
+            auto start_bri = id(action_start_bri);
+            auto new_bri = id(dimmer).current_values.get_brightness();
+            if (start_bri < 0) return;
+            auto level_delta = std::abs(new_bri - start_bri);
+            if (level_delta > 0 && level_delta < 0.1) {
+              new_bri = start_bri - 0.1;
+            }
+            new_bri = esphome::clamp(new_bri, 0.01, 1.0f);
+            auto call = id(dimmer).turn_on();
+            call.set_brightness(new_bri);
+            call.set_transition_length(0);
+            call.perform();
+  - platform: gpio
+    pin:
+      number: GPIO15
+      mode: INPUT_PULLUP
+    name: ${friendly_name} Main Button
+    mqtt_id: main_button_mqtt
+    id: main_button
+    internal: false
+    on_press:
+      then:
+        - light.toggle:
+            id: dimmer
+    on_click:
+      min_length: ${long_press_min}
+      max_length: ${long_press_max}
+      then:
+        - globals.set:
+            id: action_start_bri
+            value: "-1"
+        - light.turn_on:
+            id: dimmer
+            brightness: ${default_bri}
+            transition_length: ${transition_length}
+
+globals:
+  - id: dimmer_lvl
+    type: float
+    initial_value: "1.0"
+  - id: action_start_bri
+    type: float
+  - id: full_dim_dur_ms
+    type: float
+    initial_value: "3000"
+
+interval:
+  - interval: 10ms
+    id: update_leds_interval
+    automation_id: update_leds_steps
+    then:
+      - lambda: |-
+          if (id(dimmer).current_values.is_on()) {
+            id(dimmer_lvl) = id(dimmer).current_values.get_brightness();
+          }
+          if (id(dimmer_lvl) > .19) { id(led2).turn_on(); }
+          if (id(dimmer_lvl) < .20) { id(led2).turn_off(); }
+          if (id(dimmer_lvl) > .39) { id(led3).turn_on(); }
+          if (id(dimmer_lvl) < .40) { id(led3).turn_off(); }
+          if (id(dimmer_lvl) > .59) { id(led4).turn_on(); }
+          if (id(dimmer_lvl) < .60) { id(led4).turn_off(); }
+          if (id(dimmer_lvl) > .79) { id(led5).turn_on(); }
+          if (id(dimmer_lvl) < .80) { id(led5).turn_off(); }
+          if (!id(dimmer).current_values.is_on()) {
+            id(led2).turn_off();
+            id(led3).turn_off();
+            id(led4).turn_off();
+            id(led5).turn_off();
+          }

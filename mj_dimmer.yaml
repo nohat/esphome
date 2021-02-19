@@ -107,6 +107,7 @@ output:
   - id: virtual_dimmer_output
     platform: template
     type: float
+    power_supply: relay
     write_action:
       - globals.set:
           id: vdimmer_lvl
@@ -283,5 +284,5 @@ globals:
     restore_value: true
   - id: multiphase_dimmer_position
     type: uint8_t
-    initial_value: "2"
+    initial_value: "1"
     restore_value: true

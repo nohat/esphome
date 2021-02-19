@@ -18,6 +18,33 @@ esphome:
   platform: ESP8266
   board: esp01_1m
   esp8266_restore_from_flash: true
+  on_boot:
+    - lambda: |-
+        id(virtual_dimmer).add_new_target_state_reached_callback([]() {
+          auto offset = id(multiphase_dimmer_position) - 1;
+          auto factor = id(multiphase_dimmer_phases);
+          id(vdimmer_lvl) = id(virtual_dimmer).current_values.get_brightness();
+          auto new_pdimmer_lvl = clamp(id(vdimmer_lvl) * factor - offset, 0, 1);
+          id(pdimmer_lvl) = new_pdimmer_lvl;
+          auto call = id(physical_dimmer).make_call();
+          call.set_state(id(virtual_dimmer).current_values.get_state());
+          call.set_brightness(new_pdimmer_lvl);
+          call.set_transition_length(0);
+          call.perform();
+        });
+  on_loop:
+    - lambda: |-
+        auto offset = id(multiphase_dimmer_position) - 1;
+        auto factor = id(multiphase_dimmer_phases);
+        auto new_pdimmer_lvl = clamp(id(vdimmer_lvl) * factor - offset, 0, 1);
+        if (id(pdimmer_lvl) == new_pdimmer_lvl) return;
+        id(pdimmer_lvl) = new_pdimmer_lvl;
+        auto call = id(physical_dimmer).make_call();
+        call.set_state(new_pdimmer_lvl > 0);
+        call.set_brightness(new_pdimmer_lvl);
+        call.set_publish(false);
+        call.set_transition_length(0);
+        call.perform();
 
 wifi:
   ssid: "iot153"
@@ -84,6 +111,17 @@ output:
       - globals.set:
           id: vdimmer_lvl
           value: !lambda return state;
+      - lambda: |-
+          id(red_led).set_level(id(vdimmer_lvl) == 0.0f ? 0.5 : 0.0f);
+          id(led2).set_level(id(vdimmer_lvl) * 5 - 1);
+          id(led3).set_level(id(vdimmer_lvl) * 5 - 2);
+          id(led4).set_level(id(vdimmer_lvl) * 5 - 3);
+          id(led5).set_level(id(vdimmer_lvl) * 5 - 4);
+
+status_led:
+  pin:
+    number: GPIO4
+    inverted: true
 
 light:
   - id: physical_dimmer
@@ -140,7 +178,6 @@ binary_sensor:
                   id: virtual_dimmer
                   brightness: ${default_bri_up}
                   transition_length: ${transition_length}
-              - lambda: !lambda id(physical_dimmer).publish_state();
     on_release:
       then:
         - lambda: |-
@@ -156,8 +193,6 @@ binary_sensor:
             call.set_brightness(new_bri);
             call.set_transition_length(0);
             call.perform();
-            id(physical_dimmer).publish_state();
-
   - platform: gpio
     pin:
       number: GPIO1
@@ -189,7 +224,6 @@ binary_sensor:
                   id: virtual_dimmer
                   brightness: ${default_bri_down}
                   transition_length: ${transition_length}
-              - lambda: !lambda id(physical_dimmer).publish_state();
 
     on_release:
       then:
@@ -206,7 +240,6 @@ binary_sensor:
             call.set_brightness(new_bri);
             call.set_transition_length(0);
             call.perform();
-            id(physical_dimmer).publish_state();
   - platform: gpio
     pin:
       number: GPIO15
@@ -230,7 +263,6 @@ binary_sensor:
             id: virtual_dimmer
             brightness: ${default_bri}
             transition_length: ${transition_length}
-        - lambda: !lambda id(physical_dimmer).publish_state();
 
 globals:
   - id: pdimmer_lvl
@@ -244,36 +276,12 @@ globals:
   - id: full_dim_dur_ms
     type: float
     initial_value: "3000"
+    restore_value: true
   - id: multiphase_dimmer_phases
     type: uint8_t
     initial_value: "2"
+    restore_value: true
   - id: multiphase_dimmer_position
     type: uint8_t
-    initial_value: "1"
-
-interval:
-  - id: synchronize_dimmers
-    interval: 10ms
-    then:
-      - lambda: |-
-          auto offset = id(multiphase_dimmer_position) - 1;
-          auto factor = id(multiphase_dimmer_phases);
-          auto new_pdimmer_lvl = clamp(id(vdimmer_lvl) * factor - offset, 0, 1);
-          if (id(pdimmer_lvl) == new_pdimmer_lvl) return;
-          id(pdimmer_lvl) = new_pdimmer_lvl;
-          auto call = id(physical_dimmer).make_call();
-          call.set_state(new_pdimmer_lvl > 0);
-          call.set_brightness(new_pdimmer_lvl);
-          call.set_publish(false);
-          call.set_transition_length(0);
-          call.perform();
-  - interval: 10ms
-    id: update_leds_interval
-    automation_id: update_leds_steps
-    then:
-      - lambda: |-
-          id(red_led).set_level(id(vdimmer_lvl) == 0.0f ? 0.5 : 0.0f);
-          id(led2).set_level(id(vdimmer_lvl) * 5 - 1);
-          id(led3).set_level(id(vdimmer_lvl) * 5 - 2);
-          id(led4).set_level(id(vdimmer_lvl) * 5 - 3);
-          id(led5).set_level(id(vdimmer_lvl) * 5 - 4);
+    initial_value: "2"
+    restore_value: true

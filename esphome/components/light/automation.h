@@ -164,5 +164,15 @@ template<typename... Ts> class AddressableSet : public Action<Ts...> {
   LightState *parent_;
 };
 
+template<typename... Ts> class HaltTransitionAction : public Action<Ts...> {
+ public:
+  explicit HaltTransitionAction(LightState *state) : state_(state) {}
+
+  void play(Ts... x) override { this->state_->halt_transition(); }
+
+ protected:
+  LightState *state_;
+};
+
 }  // namespace light
 }  // namespace esphome

@@ -282,6 +282,11 @@ class LightState : public Nameable, public Component {
 
   void current_values_as_cwww(float *cold_white, float *warm_white, bool constant_brightness = false);
 
+  /// Halt the current transition if one is active and apply the intermediate
+  /// values immediately. Remote values will be updated to match the current
+  /// partial state.
+  void halt_transition();
+
  protected:
   friend LightOutput;
   friend LightCall;

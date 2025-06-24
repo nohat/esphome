@@ -20,6 +20,7 @@ DimRelativeAction = light_ns.class_('DimRelativeAction', automation.Action)
 AddressableSet = light_ns.class_('AddressableSet', automation.Action)
 LightIsOnCondition = light_ns.class_('LightIsOnCondition', automation.Condition)
 LightIsOffCondition = light_ns.class_('LightIsOffCondition', automation.Condition)
+HaltTransitionAction = light_ns.class_('HaltTransitionAction', automation.Action)
 
 # Triggers
 LightTurnOnTrigger = light_ns.class_('LightTurnOnTrigger', automation.Trigger.template())

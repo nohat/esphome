@@ -755,6 +755,18 @@ void LightState::current_values_as_cwww(float *cold_white, float *warm_white, bo
   this->current_values.as_cwww(traits.get_min_mireds(), traits.get_max_mireds(), cold_white, warm_white,
                                this->gamma_correct_, constant_brightness);
 }
+
+void LightState::halt_transition() {
+  if (this->transformer_ == nullptr || !this->transformer_->is_transition())
+    return;
+  // Apply current intermediate values and stop the transformer
+  this->current_values = this->transformer_->get_values();
+  this->remote_values = this->current_values;
+  this->transformer_.reset();
+  this->next_write_ = true;
+  this->remote_values_callback_.call();
+  this->target_state_reached_callback_.call();
+}
 void LightState::add_new_remote_values_callback(std::function<void()> &&send_callback) {
   this->remote_values_callback_.add(std::move(send_callback));
 }

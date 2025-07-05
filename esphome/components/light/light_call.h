@@ -19,6 +19,8 @@ class LightCall {
   LightCall &set_state(optional<bool> state);
   /// Set the binary ON/OFF state of the light.
   LightCall &set_state(bool state);
+  /// Stop any active transition immediately.
+  LightCall &stop();
   /** Set the transition length of this call in milliseconds.
    *
    * This argument is ignored for starting flashes and effects.
@@ -190,6 +192,7 @@ class LightCall {
   optional<float> warm_white_;
   optional<uint32_t> effect_;
   bool publish_{true};
+  bool stop_action_{false};
   bool save_{true};
 };
 

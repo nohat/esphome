@@ -29,6 +29,11 @@ static const LogString *color_mode_to_human(ColorMode color_mode) {
 }
 
 void LightCall::perform() {
+  // Handle stop action early and bypass usual validation/processing.
+  if (this->stop_action_) {
+    this->parent_->stop_immediately_();
+    return;
+  }
   const char *name = this->parent_->get_name().c_str();
   LightColorValues v = this->validate_();
 
@@ -683,6 +688,11 @@ LightCall &LightCall::set_rgb(float red, float green, float blue) {
 LightCall &LightCall::set_rgbw(float red, float green, float blue, float white) {
   this->set_rgb(red, green, blue);
   this->set_white(white);
+  return *this;
+}
+
+LightCall &LightCall::stop() {
+  this->stop_action_ = true;
   return *this;
 }
 

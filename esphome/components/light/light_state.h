@@ -70,6 +70,7 @@ class LightState : public EntityBase, public Component {
   LightCall turn_on();
   LightCall turn_off();
   LightCall toggle();
+  LightCall stop();
   LightCall make_call();
 
   // ========== INTERNAL METHODS ==========
@@ -198,6 +199,9 @@ class LightState : public EntityBase, public Component {
   LightEffect *get_active_effect_();
   /// Internal method to stop the current effect (if one is active).
   void stop_effect_();
+  /// Internal method to stop any active transformer immediately.
+  void stop_immediately_();
+
   /// Internal method to start a transition to the target color with the given length.
   void start_transition_(const LightColorValues &target, uint32_t length, bool set_remote_values);
 

@@ -15,6 +15,7 @@ LightTraits LightState::get_traits() { return this->output_->get_traits(); }
 LightCall LightState::turn_on() { return this->make_call().set_state(true); }
 LightCall LightState::turn_off() { return this->make_call().set_state(false); }
 LightCall LightState::toggle() { return this->make_call().set_state(!this->remote_values.is_on()); }
+LightCall LightState::stop() { return this->make_call().stop(); }
 LightCall LightState::make_call() { return LightCall(this); }
 
 void LightState::setup() {
@@ -269,6 +270,22 @@ void LightState::set_immediately_(const LightColorValues &target, bool set_remot
   }
   this->output_->update_state(this);
   this->next_write_ = true;
+}
+
+void LightState::stop_immediately_() {
+  if (this->transformer_ == nullptr)
+    return;
+
+  this->transformer_->stop();
+  this->transformer_ = nullptr;
+  this->is_transformer_active_ = false;
+  // keep current_values as-is (already holds rendered output)
+  this->remote_values = this->current_values;
+  this->output_->update_state(this);
+  this->next_write_ = true;
+  this->publish_state();
+  // notify automations waiting for transition completion
+  this->target_state_reached_callback_.call();
 }
 
 void LightState::save_remote_values_() {

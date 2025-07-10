@@ -47,6 +47,7 @@ SumCombinationComponent = combination_ns.class_(
     "SumCombinationComponent", cg.Component, sensor.Sensor
 )
 
+CONF_COEFFICIENT = "coefficient"
 CONF_COEFFECIENT = "coeffecient"
 CONF_ERROR = "error"
 CONF_KALMAN = "kalman"
@@ -68,11 +69,14 @@ KALMAN_SOURCE_SCHEMA = cv.Schema(
     }
 )
 
-LINEAR_SOURCE_SCHEMA = cv.Schema(
-    {
-        cv.Required(CONF_SOURCE): cv.use_id(sensor.Sensor),
-        cv.Required(CONF_COEFFECIENT): cv.templatable(cv.float_),
-    }
+LINEAR_SOURCE_SCHEMA = cv.All(
+    cv.Schema(
+        {
+            cv.Required(CONF_SOURCE): cv.use_id(sensor.Sensor),
+            cv.Required(CONF_COEFFICIENT): cv.templatable(cv.float_),
+        }
+    ),
+    cv.rename_key(CONF_COEFFECIENT, CONF_COEFFICIENT),
 )
 
 SENSOR_ONLY_SOURCE_SCHEMA = cv.Schema(
@@ -162,12 +166,12 @@ async def to_code(config):
             )
             cg.add(var.add_source(source, error))
         elif config[CONF_TYPE] == CONF_LINEAR:
-            coeffecient = await cg.templatable(
-                source_conf[CONF_COEFFECIENT],
+            coefficient = await cg.templatable(
+                source_conf[CONF_COEFFICIENT],
                 [(float, "x")],
                 cg.float_,
             )
-            cg.add(var.add_source(source, coeffecient))
+            cg.add(var.add_source(source, coefficient))
         else:
             cg.add(var.add_source(source))
 

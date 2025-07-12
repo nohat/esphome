@@ -122,5 +122,40 @@ class LightFlashTransformer : public LightTransformer {
   bool begun_lightstate_restore_;
 };
 
+class LightDimmerTransformer : public LightTransformer {
+ public:
+  LightDimmerTransformer(LightState &state) : state_(state) {}
+
+  void set_speed(float speed) { this->speed_ = speed; }
+  void set_direction(int direction) { this->direction_ = direction; }
+
+  void start() override { this->last_update_ = millis(); }
+
+  optional<LightColorValues> apply() override {
+    uint32_t now = millis();
+    float dt = (now - this->last_update_) / 1000.0f;
+    this->last_update_ = now;
+
+    auto cur = this->state_.current_values;
+    float b = cur.get_brightness() + this->speed_ * dt * this->direction_;
+    b = clamp(b, 0.0f, 1.0f);
+    cur.set_state(b > 0.0f);
+    cur.set_brightness(b);
+    if (b <= 0.0f || b >= 1.0f)
+      this->finished_ = true;
+    this->target_values_ = cur;
+    return cur;
+  }
+
+  bool is_finished() override { return this->finished_; }
+
+ protected:
+  LightState &state_;
+  float speed_{0};
+  int direction_{1};
+  uint32_t last_update_{0};
+  bool finished_{false};
+};
+
 }  // namespace light
 }  // namespace esphome

@@ -28,6 +28,11 @@ enum LightRestoreMode : uint8_t {
   LIGHT_RESTORE_AND_ON,
 };
 
+enum class DimmingDirection : uint8_t {
+  DIM_UP,
+  DIM_DOWN,
+};
+
 struct LightStateRTCState {
   LightStateRTCState(ColorMode color_mode, bool state, float brightness, float color_brightness, float red, float green,
                      float blue, float white, float color_temp, float cold_white, float warm_white)
@@ -189,6 +194,12 @@ class LightState : public EntityBase, public Component {
    * }
    */
   bool is_transformer_active();
+
+  /// Start continuously dimming the light.
+  void start_dimming(float speed, DimmingDirection direction);
+
+  /// Stop any active dimming or transition and save current state.
+  void stop_dimming();
 
  protected:
   friend LightOutput;

@@ -27,6 +27,7 @@ from esphome.const import (
 
 from .types import (
     COLOR_MODES,
+    DIMMING_DIRECTIONS,
     LIMIT_MODES,
     AddressableLightState,
     AddressableSet,
@@ -36,6 +37,8 @@ from .types import (
     LightIsOffCondition,
     LightIsOnCondition,
     LightState,
+    StartDimmingAction,
+    StopDimmingAction,
     ToggleAction,
 )
 
@@ -170,6 +173,8 @@ async def light_control_to_code(config, action_id, template_arg, args):
 
 
 CONF_RELATIVE_BRIGHTNESS = "relative_brightness"
+CONF_DIRECTION = "direction"
+CONF_SPEED = "speed"
 LIGHT_DIM_RELATIVE_ACTION_SCHEMA = cv.Schema(
     {
         cv.Required(CONF_ID): cv.use_id(LightState),
@@ -256,6 +261,42 @@ async def light_addressable_set_to_code(config, action_id, template_arg, args):
         templ = await cg.templatable(config[CONF_WHITE], args, cg.float_)
         cg.add(var.set_white(templ))
     return var
+
+
+LIGHT_START_DIMMING_ACTION_SCHEMA = cv.Schema(
+    {
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Optional(CONF_DIRECTION, default="UP"): cv.enum(
+            DIMMING_DIRECTIONS, upper=True
+        ),
+        cv.Required(CONF_SPEED): cv.templatable(cv.percentage),
+    }
+)
+
+
+@automation.register_action(
+    "light.start_dimming", StartDimmingAction, LIGHT_START_DIMMING_ACTION_SCHEMA
+)
+async def light_start_dimming_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    templ = await cg.templatable(config[CONF_SPEED], args, float)
+    cg.add(var.set_speed(templ))
+    cg.add(var.set_direction(config[CONF_DIRECTION]))
+    return var
+
+
+LIGHT_STOP_DIMMING_ACTION_SCHEMA = automation.maybe_simple_id(
+    {cv.Required(CONF_ID): cv.use_id(LightState)}
+)
+
+
+@automation.register_action(
+    "light.stop_dimming", StopDimmingAction, LIGHT_STOP_DIMMING_ACTION_SCHEMA
+)
+async def light_stop_dimming_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(action_id, template_arg, paren)
 
 
 @automation.register_condition(

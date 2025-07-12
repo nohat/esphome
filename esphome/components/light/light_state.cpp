@@ -296,5 +296,15 @@ void LightState::save_remote_values_() {
   this->rtc_.save(&saved);
 }
 
+void LightState::start_dimming(float speed, DimmingDirection direction) {
+  this->transformer_ = make_unique<LightDimmerTransformer>(*this);
+  auto *tr = static_cast<LightDimmerTransformer *>(this->transformer_.get());
+  tr->set_speed(speed);
+  tr->set_direction(direction == DimmingDirection::DIM_UP ? 1 : -1);
+  tr->setup(this->current_values, this->current_values, 0);
+}
+
+void LightState::stop_dimming() { this->set_immediately_(this->current_values, true); }
+
 }  // namespace light
 }  // namespace esphome

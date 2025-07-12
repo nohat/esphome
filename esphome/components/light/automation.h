@@ -104,6 +104,33 @@ template<typename... Ts> class DimRelativeAction : public Action<Ts...> {
   LimitMode limit_mode_{LimitMode::CLAMP};
 };
 
+template<typename... Ts> class StartDimmingAction : public Action<Ts...> {
+ public:
+  explicit StartDimmingAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(float, speed)
+  TEMPLATABLE_VALUE(DimmingDirection, direction)
+
+  void play(Ts... x) override {
+    float spd = this->speed_.value(x...);
+    auto dir = this->direction_.value_or(x..., DimmingDirection::DIM_UP);
+    this->parent_->start_dimming(spd, dir);
+  }
+
+ protected:
+  LightState *parent_;
+};
+
+template<typename... Ts> class StopDimmingAction : public Action<Ts...> {
+ public:
+  explicit StopDimmingAction(LightState *parent) : parent_(parent) {}
+
+  void play(Ts... x) override { this->parent_->stop_dimming(); }
+
+ protected:
+  LightState *parent_;
+};
+
 template<typename... Ts> class LightIsOnCondition : public Condition<Ts...> {
  public:
   explicit LightIsOnCondition(LightState *state) : state_(state) {}

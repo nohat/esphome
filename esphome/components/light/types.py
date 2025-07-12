@@ -35,11 +35,20 @@ LIMIT_MODES = {
     "DO_NOTHING": LimitMode.DO_NOTHING,
 }
 
+# Dimming direction
+DimmingDirection = light_ns.enum("DimmingDirection", is_class=True)
+DIMMING_DIRECTIONS = {
+    "UP": DimmingDirection.UP,
+    "DOWN": DimmingDirection.DOWN,
+}
+
 # Actions
 ToggleAction = light_ns.class_("ToggleAction", automation.Action)
 LightControlAction = light_ns.class_("LightControlAction", automation.Action)
 DimRelativeAction = light_ns.class_("DimRelativeAction", automation.Action)
 AddressableSet = light_ns.class_("AddressableSet", automation.Action)
+StartDimmingAction = light_ns.class_("StartDimmingAction", automation.Action)
+StopDimmingAction = light_ns.class_("StopDimmingAction", automation.Action)
 LightIsOnCondition = light_ns.class_("LightIsOnCondition", automation.Condition)
 LightIsOffCondition = light_ns.class_("LightIsOffCondition", automation.Condition)
 

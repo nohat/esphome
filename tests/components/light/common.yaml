@@ -17,6 +17,11 @@ esphome:
           relative_brightness: 5%
           brightness_limits:
             max_brightness: 90%
+      - light.start_dimming:
+          id: test_monochromatic_light
+          direction: up
+          speed: 0.1
+      - light.stop_dimming: test_monochromatic_light
 
 light:
   - platform: binary

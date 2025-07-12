@@ -28,6 +28,8 @@ enum LightRestoreMode : uint8_t {
   LIGHT_RESTORE_AND_ON,
 };
 
+enum class DimmingDirection : uint8_t { UP = 0, DOWN = 1 };
+
 struct LightStateRTCState {
   LightStateRTCState(ColorMode color_mode, bool state, float brightness, float color_brightness, float red, float green,
                      float blue, float white, float color_temp, float cold_white, float warm_white)
@@ -74,6 +76,11 @@ class LightState : public EntityBase, public Component {
   LightCall turn_off();
   LightCall toggle();
   LightCall make_call();
+
+  /// Start continuously dimming the light in the given direction at the provided speed (0.0-1.0 per second).
+  void start_dimming(DimmingDirection direction, float speed);
+  /// Stop any ongoing dimming operation and keep the current brightness level.
+  void stop_dimming();
 
   // ========== INTERNAL METHODS ==========
   // (In most use cases you won't need these)

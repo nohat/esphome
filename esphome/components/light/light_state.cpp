@@ -296,5 +296,23 @@ void LightState::save_remote_values_() {
   this->rtc_.save(&saved);
 }
 
+void LightState::start_dimming(DimmingDirection direction, float speed) {
+  this->stop_effect_();
+  this->transformer_ = make_unique<LightDimmingTransformer>(*this, direction, speed);
+  this->transformer_->setup(this->current_values, this->current_values, 0);
+}
+
+void LightState::stop_dimming() {
+  if (this->transformer_ != nullptr) {
+    this->current_values = this->transformer_->get_target_values();
+    this->remote_values = this->transformer_->get_target_values();
+    this->transformer_->stop();
+    this->transformer_ = nullptr;
+    this->is_transformer_active_ = false;
+    this->publish_state();
+    this->target_state_reached_callback_.call();
+  }
+}
+
 }  // namespace light
 }  // namespace esphome

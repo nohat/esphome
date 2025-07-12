@@ -122,5 +122,44 @@ class LightFlashTransformer : public LightTransformer {
   bool begun_lightstate_restore_;
 };
 
+class LightDimmingTransformer : public LightTransformer {
+ public:
+  LightDimmingTransformer(LightState &state, DimmingDirection direction, float speed)
+      : state_(state), direction_(direction), speed_(speed) {}
+
+  void start() override { this->last_update_ = millis(); }
+
+  optional<LightColorValues> apply() override {
+    uint32_t now = millis();
+    float dt = (now - this->last_update_) / 1000.0f;
+    this->last_update_ = now;
+    float cur;
+    this->state_.current_values.as_brightness(&cur);
+    float delta = this->speed_ * dt * (this->direction_ == DimmingDirection::UP ? 1.0f : -1.0f);
+    cur = clamp(cur + delta, 0.0f, 1.0f);
+    this->target_values_ = this->state_.current_values;
+    this->target_values_.set_brightness(cur);
+    this->target_values_.set_state(cur > 0.0f);
+    this->state_.remote_values = this->target_values_;
+    this->state_.publish_state();
+    return this->target_values_;
+  }
+
+  bool is_finished() override {
+    float cur;
+    this->state_.current_values.as_brightness(&cur);
+    if (this->direction_ == DimmingDirection::UP)
+      return cur >= 1.0f;
+    else
+      return cur <= 0.0f;
+  }
+
+ protected:
+  LightState &state_;
+  DimmingDirection direction_;
+  float speed_;
+  uint32_t last_update_{0};
+};
+
 }  // namespace light
 }  // namespace esphome

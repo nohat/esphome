@@ -27,15 +27,19 @@ from esphome.const import (
 
 from .types import (
     COLOR_MODES,
+    DIMMING_DIRECTIONS,
     LIMIT_MODES,
     AddressableLightState,
     AddressableSet,
     ColorMode,
+    DimmingDirection,
     DimRelativeAction,
     LightControlAction,
     LightIsOffCondition,
     LightIsOnCondition,
     LightState,
+    StartDimmingAction,
+    StopDimmingAction,
     ToggleAction,
 )
 
@@ -191,6 +195,23 @@ LIGHT_DIM_RELATIVE_ACTION_SCHEMA = cv.Schema(
     }
 )
 
+CONF_DIRECTION = "direction"
+CONF_SPEED = "speed"
+
+LIGHT_START_DIMMING_SCHEMA = cv.Schema(
+    {
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_DIRECTION): cv.templatable(
+            cv.enum(DIMMING_DIRECTIONS, upper=True)
+        ),
+        cv.Required(CONF_SPEED): cv.templatable(cv.positive_float),
+    }
+)
+
+LIGHT_STOP_DIMMING_SCHEMA = automation.maybe_simple_id(
+    {cv.Required(CONF_ID): cv.use_id(LightState)}
+)
+
 
 @automation.register_action(
     "light.dim_relative", DimRelativeAction, LIGHT_DIM_RELATIVE_ACTION_SCHEMA
@@ -210,6 +231,28 @@ async def light_dim_relative_to_code(config, action_id, template_arg, args):
             )
         )
         cg.add(var.set_limit_mode(conf[CONF_LIMIT_MODE]))
+    return var
+
+
+@automation.register_action(
+    "light.start_dimming", StartDimmingAction, LIGHT_START_DIMMING_SCHEMA
+)
+async def light_start_dimming_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    direction = await cg.templatable(config[CONF_DIRECTION], args, DimmingDirection)
+    cg.add(var.set_direction(direction))
+    speed = await cg.templatable(config[CONF_SPEED], args, cg.float_)
+    cg.add(var.set_speed(speed))
+    return var
+
+
+@automation.register_action(
+    "light.stop_dimming", StopDimmingAction, LIGHT_STOP_DIMMING_SCHEMA
+)
+async def light_stop_dimming_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
     return var
 
 

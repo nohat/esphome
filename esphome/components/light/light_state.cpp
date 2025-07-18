@@ -1,4 +1,5 @@
 #include "esphome/core/log.h"
+#include <memory>
 
 #include "light_output.h"
 #include "light_state.h"
@@ -294,6 +295,35 @@ void LightState::save_remote_values_() {
   saved.warm_white = this->remote_values.get_warm_white();
   saved.effect = this->active_effect_index_;
   this->rtc_.save(&saved);
+}
+
+void LightState::start_continuous_dimming(bool direction_up, float speed) {
+  // Stop any existing effects before starting continuous dimming
+  this->stop_effect_();
+  
+  // Create a continuous dimming transformer
+  this->transformer_ = make_unique<LightContinuousDimmingTransformer>(direction_up, speed);
+  this->transformer_->setup(this->current_values, this->current_values, UINT32_MAX);  // Use max length since it's continuous
+  
+  // Don't update remote_values immediately - they'll be updated when dimming stops
+}
+
+void LightState::stop_continuous_dimming() {
+  if (this->transformer_ != nullptr) {
+    // Get the current brightness from the transformer before stopping it
+    auto *continuous_transformer = dynamic_cast<LightContinuousDimmingTransformer*>(this->transformer_.get());
+    if (continuous_transformer != nullptr) {
+      // Update the remote values to the current brightness level
+      this->remote_values.set_brightness(continuous_transformer->get_current_brightness());
+      this->publish_state();
+    }
+    
+    // Stop the transformer and clean up
+    this->transformer_->stop();
+    this->is_transformer_active_ = false;
+    this->transformer_ = nullptr;
+    this->target_state_reached_callback_.call();
+  }
 }
 
 }  // namespace light

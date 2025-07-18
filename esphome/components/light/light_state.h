@@ -151,6 +151,12 @@ class LightState : public EntityBase, public Component {
   /// Set the initial state of this light
   void set_initial_state(const LightStateRTCState &initial_state);
 
+  /// Start continuous dimming in the specified direction at the given speed
+  void start_continuous_dimming(bool direction_up, float speed);
+
+  /// Stop any ongoing continuous dimming and preserve current brightness
+  void stop_continuous_dimming();
+
   /// Return whether the light has any effects that meet the trait requirements.
   bool supports_effects();
 

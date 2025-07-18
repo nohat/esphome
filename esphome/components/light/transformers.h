@@ -122,5 +122,61 @@ class LightFlashTransformer : public LightTransformer {
   bool begun_lightstate_restore_;
 };
 
+class LightContinuousDimmingTransformer : public LightTransformer {
+ public:
+  LightContinuousDimmingTransformer(bool dimming_up, float speed) : dimming_up_(dimming_up), speed_(speed) {}
+
+  void start() override {
+    // Store the current brightness level as our starting point
+    this->start_brightness_ = this->start_values_.get_brightness();
+    this->current_brightness_ = this->start_brightness_;
+    
+    // For continuous dimming, we don't have a fixed end point initially
+    // We'll compute the target on-the-fly based on direction and current time
+  }
+
+  optional<LightColorValues> apply() override {
+    uint32_t now = esphome::millis();
+    float elapsed_seconds = (now - this->start_time_) / 1000.0f;
+    
+    // Calculate the new brightness based on elapsed time and speed
+    float brightness_change = this->speed_ * elapsed_seconds;
+    
+    if (this->dimming_up_) {
+      this->current_brightness_ = clamp(this->start_brightness_ + brightness_change, 0.0f, 1.0f);
+    } else {
+      this->current_brightness_ = clamp(this->start_brightness_ - brightness_change, 0.0f, 1.0f);
+    }
+    
+    // Create the result color values with the new brightness
+    LightColorValues result = this->start_values_;
+    result.set_brightness(this->current_brightness_);
+    
+    return result;
+  }
+
+  bool is_finished() override {
+    // Continuous dimming only finishes when it hits the bounds (0 or 1)
+    return (this->dimming_up_ && this->current_brightness_ >= 1.0f) ||
+           (!this->dimming_up_ && this->current_brightness_ <= 0.0f);
+  }
+
+  void stop() override {
+    // When stopped, update the target values to the current brightness
+    // This ensures the light stays at the current dimming level
+    LightColorValues final_values = this->start_values_;
+    final_values.set_brightness(this->current_brightness_);
+    this->target_values_ = final_values;
+  }
+
+  float get_current_brightness() const { return this->current_brightness_; }
+
+ protected:
+  bool dimming_up_;
+  float speed_;  // Brightness change per second (0.0 to 1.0 range)
+  float start_brightness_;
+  float current_brightness_;
+};
+
 }  // namespace light
 }  // namespace esphome

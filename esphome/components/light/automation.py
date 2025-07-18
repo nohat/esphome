@@ -25,6 +25,10 @@ from esphome.const import (
     CONF_WHITE,
 )
 
+# Constants for new dimming actions
+CONF_DIRECTION = "direction"
+CONF_SPEED = "speed"
+
 from .types import (
     COLOR_MODES,
     LIMIT_MODES,
@@ -36,6 +40,8 @@ from .types import (
     LightIsOffCondition,
     LightIsOnCondition,
     LightState,
+    StartDimmingAction,
+    StopDimmingAction,
     ToggleAction,
 )
 
@@ -279,3 +285,40 @@ async def light_addressable_set_to_code(config, action_id, template_arg, args):
 async def light_is_on_off_to_code(config, condition_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     return cg.new_Pvariable(condition_id, template_arg, paren)
+
+
+LIGHT_START_DIMMING_ACTION_SCHEMA = cv.Schema(
+    {
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_DIRECTION): cv.templatable(cv.enum({"up": True, "down": False})),
+        cv.Required(CONF_SPEED): cv.templatable(cv.positive_float),
+    }
+)
+
+
+@automation.register_action(
+    "light.start_dimming", StartDimmingAction, LIGHT_START_DIMMING_ACTION_SCHEMA
+)
+async def light_start_dimming_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    template_ = await cg.templatable(config[CONF_DIRECTION], args, bool)
+    cg.add(var.set_direction_up(template_))
+    template_ = await cg.templatable(config[CONF_SPEED], args, float)
+    cg.add(var.set_speed(template_))
+    return var
+
+
+LIGHT_STOP_DIMMING_ACTION_SCHEMA = automation.maybe_simple_id(
+    {
+        cv.Required(CONF_ID): cv.use_id(LightState),
+    }
+)
+
+
+@automation.register_action(
+    "light.stop_dimming", StopDimmingAction, LIGHT_STOP_DIMMING_ACTION_SCHEMA
+)
+async def light_stop_dimming_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(action_id, template_arg, paren)

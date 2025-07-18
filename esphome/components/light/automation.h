@@ -216,5 +216,35 @@ template<typename... Ts> class AddressableSet : public Action<Ts...> {
   }
 };
 
+template<typename... Ts> class StartDimmingAction : public Action<Ts...> {
+ public:
+  explicit StartDimmingAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(bool, direction_up)  // true for up, false for down
+  TEMPLATABLE_VALUE(float, speed)
+
+  void play(Ts... x) override {
+    bool direction = this->direction_up_.value(x...);
+    float dimming_speed = this->speed_.value(x...);
+    
+    this->parent_->start_continuous_dimming(direction, dimming_speed);
+  }
+
+ protected:
+  LightState *parent_;
+};
+
+template<typename... Ts> class StopDimmingAction : public Action<Ts...> {
+ public:
+  explicit StopDimmingAction(LightState *parent) : parent_(parent) {}
+
+  void play(Ts... x) override {
+    this->parent_->stop_continuous_dimming();
+  }
+
+ protected:
+  LightState *parent_;
+};
+
 }  // namespace light
 }  // namespace esphome

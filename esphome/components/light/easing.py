@@ -2,6 +2,9 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_TYPE, CONF_POINTS
 
+# Import from parent light module
+from .types import light_ns
+
 # Easing curve types
 EASING_TYPES = {
     # Standard easing curves
@@ -54,7 +57,6 @@ CONF_X = "x"
 CONF_Y = "y"
 
 # Types from the light component
-light_ns = cg.esphome_ns.namespace("light")
 EasingType = light_ns.enum("EasingType")
 EasingCurve = light_ns.class_("EasingCurve")
 EasingPoint = light_ns.struct("EasingPoint")
@@ -138,16 +140,15 @@ async def easing_to_code(config):
     easing_type = EASING_TYPES[config[CONF_TYPE]]
     
     # Create the easing curve object
-    curve_var = cg.new_Pvariable(cg.MockObjClass("EasingCurve", is_class=True), 
-                                 cg.RawExpression(easing_type))
+    curve_var = cg.new_Pvariable(EasingCurve, cg.RawExpression(easing_type))
     
     if CONF_POINTS in config:
-        # Add custom points
-        points_var = cg.new_Pvariable(cg.MockObjClass("std::vector<EasingPoint>", is_class=True))
+        # Create a vector of points
+        points = []
         for point in config[CONF_POINTS]:
-            point_var = cg.new_Pvariable(cg.MockObjClass("EasingPoint", is_class=True),
-                                         point[CONF_X], point[CONF_Y])
-            cg.add(points_var.push_back(point_var))
-        cg.add(curve_var.set_points(points_var))
+            points.append(cg.RawExpression(f"esphome::light::EasingPoint({point[CONF_X]}f, {point[CONF_Y]}f)"))
+        
+        # Set the points
+        cg.add(curve_var.set_points(cg.RawExpression(f"std::vector<esphome::light::EasingPoint>{{{', '.join(map(str, points))}}}")))
     
     return curve_var

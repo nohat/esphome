@@ -2,6 +2,7 @@
 
 #include "esphome/core/helpers.h"
 #include <vector>
+#include <cmath>
 
 namespace esphome {
 namespace light {

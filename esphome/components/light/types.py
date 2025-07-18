@@ -38,12 +38,12 @@ LIMIT_MODES = {
 # Brightness curve profiles
 BrightnessCurveType = light_ns.enum("BrightnessCurveType", is_class=True)
 BRIGHTNESS_CURVE_TYPES = {
-    "LINEAR": BrightnessCurveType.LINEAR,
-    "GAMMA": BrightnessCurveType.GAMMA,
-    "EXPONENTIAL": BrightnessCurveType.EXPONENTIAL,
-    "LOGARITHMIC": BrightnessCurveType.LOGARITHMIC,
-    "CUBIC": BrightnessCurveType.CUBIC,
-    "CUSTOM": BrightnessCurveType.CUSTOM,
+    "LINEAR": BrightnessCurveType.BRIGHTNESS_CURVE_LINEAR,
+    "GAMMA": BrightnessCurveType.BRIGHTNESS_CURVE_GAMMA,
+    "EXPONENTIAL": BrightnessCurveType.BRIGHTNESS_CURVE_EXPONENTIAL,
+    "LOGARITHMIC": BrightnessCurveType.BRIGHTNESS_CURVE_LOGARITHMIC,
+    "CUBIC": BrightnessCurveType.BRIGHTNESS_CURVE_CUBIC,
+    "CUSTOM": BrightnessCurveType.BRIGHTNESS_CURVE_CUSTOM,
 }
 
 BrightnessCurveProfile = light_ns.struct("BrightnessCurveProfile")

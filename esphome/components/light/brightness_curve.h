@@ -1,24 +1,25 @@
 #pragma once
 
 #include <vector>
+#include <cstdint>
 
 namespace esphome {
 namespace light {
 
 /// Enum for different brightness curve types
-enum BrightnessCurveType : uint8_t {
+enum BrightnessCurveType {
   /// Linear 1:1 mapping (no transformation)
-  LINEAR = 0,
+  BRIGHTNESS_CURVE_LINEAR = 0,
   /// Gamma correction (power function)
-  GAMMA = 1,
+  BRIGHTNESS_CURVE_GAMMA = 1,
   /// Exponential curve
-  EXPONENTIAL = 2,
+  BRIGHTNESS_CURVE_EXPONENTIAL = 2,
   /// Logarithmic curve  
-  LOGARITHMIC = 3,
+  BRIGHTNESS_CURVE_LOGARITHMIC = 3,
   /// Cubic curve for smooth transitions
-  CUBIC = 4,
+  BRIGHTNESS_CURVE_CUBIC = 4,
   /// Custom curve defined by control points
-  CUSTOM = 5,
+  BRIGHTNESS_CURVE_CUSTOM = 5,
 };
 
 /// Struct representing a control point for custom curves
@@ -58,10 +59,10 @@ struct BrightnessCurveProfile {
   std::vector<BrightnessCurvePoint> custom_points;
   
   /// Default constructor - creates a linear curve
-  BrightnessCurveProfile() : type(LINEAR) {}
+  BrightnessCurveProfile() : type(BRIGHTNESS_CURVE_LINEAR) {}
   
   /// Constructor for gamma curve
-  explicit BrightnessCurveProfile(float gamma) : type(GAMMA) {
+  explicit BrightnessCurveProfile(float gamma) : type(BRIGHTNESS_CURVE_GAMMA) {
     gamma_params.gamma = gamma;
   }
   

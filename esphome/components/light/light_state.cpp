@@ -183,116 +183,102 @@ void LightState::add_effects(const std::vector<LightEffect *> &effects) {
 
 void LightState::current_values_as_binary(bool *binary) { this->current_values.as_binary(binary); }
 void LightState::current_values_as_brightness(float *brightness) {
-  // Use brightness curve if configured, otherwise fall back to gamma correction
-  if (this->brightness_curve_.type != BrightnessCurveType::LINEAR || this->gamma_correct_ == 0.0f) {
-    // Check if we have a configured brightness curve or need to use gamma as curve
-    if (this->brightness_curve_.type == BrightnessCurveType::LINEAR && this->gamma_correct_ != 0.0f) {
-      // Convert gamma correction to curve for backwards compatibility
-      BrightnessCurveProfile gamma_curve(this->gamma_correct_);
-      this->current_values.as_brightness(brightness, gamma_curve);
-    } else {
-      this->current_values.as_brightness(brightness, this->brightness_curve_);
-    }
-  } else {
+  // Check if we have a configured brightness curve (non-default)
+  if (this->brightness_curve_.type != BRIGHTNESS_CURVE_LINEAR) {
+    // Use the configured brightness curve
+    this->current_values.as_brightness(brightness, this->brightness_curve_);
+  } else if (this->gamma_correct_ != 0.0f) {
+    // Fall back to legacy gamma correction for backwards compatibility
     this->current_values.as_brightness(brightness, this->gamma_correct_);
+  } else {
+    // No curve configured, use linear (default brightness curve)
+    this->current_values.as_brightness(brightness, this->brightness_curve_);
   }
 }
 void LightState::current_values_as_rgb(float *red, float *green, float *blue, bool color_interlock) {
-  // Use brightness curve if configured, otherwise fall back to gamma correction
-  if (this->brightness_curve_.type != BrightnessCurveType::LINEAR || this->gamma_correct_ == 0.0f) {
-    // Check if we have a configured brightness curve or need to use gamma as curve
-    if (this->brightness_curve_.type == BrightnessCurveType::LINEAR && this->gamma_correct_ != 0.0f) {
-      // Convert gamma correction to curve for backwards compatibility
-      BrightnessCurveProfile gamma_curve(this->gamma_correct_);
-      this->current_values.as_rgb(red, green, blue, gamma_curve, false);
-    } else {
-      this->current_values.as_rgb(red, green, blue, this->brightness_curve_, false);
-    }
-  } else {
+  // Check if we have a configured brightness curve (non-default)
+  if (this->brightness_curve_.type != BRIGHTNESS_CURVE_LINEAR) {
+    // Use the configured brightness curve
+    this->current_values.as_rgb(red, green, blue, this->brightness_curve_, false);
+  } else if (this->gamma_correct_ != 0.0f) {
+    // Fall back to legacy gamma correction for backwards compatibility
     this->current_values.as_rgb(red, green, blue, this->gamma_correct_, false);
+  } else {
+    // No curve configured, use linear (default brightness curve)
+    this->current_values.as_rgb(red, green, blue, this->brightness_curve_, false);
   }
 }
 void LightState::current_values_as_rgbw(float *red, float *green, float *blue, float *white, bool color_interlock) {
-  // Use brightness curve if configured, otherwise fall back to gamma correction
-  if (this->brightness_curve_.type != BrightnessCurveType::LINEAR || this->gamma_correct_ == 0.0f) {
-    // Check if we have a configured brightness curve or need to use gamma as curve
-    if (this->brightness_curve_.type == BrightnessCurveType::LINEAR && this->gamma_correct_ != 0.0f) {
-      // Convert gamma correction to curve for backwards compatibility
-      BrightnessCurveProfile gamma_curve(this->gamma_correct_);
-      this->current_values.as_rgbw(red, green, blue, white, gamma_curve, false);
-    } else {
-      this->current_values.as_rgbw(red, green, blue, white, this->brightness_curve_, false);
-    }
-  } else {
+  // Check if we have a configured brightness curve (non-default)
+  if (this->brightness_curve_.type != BRIGHTNESS_CURVE_LINEAR) {
+    // Use the configured brightness curve
+    this->current_values.as_rgbw(red, green, blue, white, this->brightness_curve_, false);
+  } else if (this->gamma_correct_ != 0.0f) {
+    // Fall back to legacy gamma correction for backwards compatibility
     this->current_values.as_rgbw(red, green, blue, white, this->gamma_correct_, false);
+  } else {
+    // No curve configured, use linear (default brightness curve)
+    this->current_values.as_rgbw(red, green, blue, white, this->brightness_curve_, false);
   }
 }
 void LightState::current_values_as_rgbww(float *red, float *green, float *blue, float *cold_white, float *warm_white,
                                          bool constant_brightness) {
-  // Use brightness curve if configured, otherwise fall back to gamma correction
-  if (this->brightness_curve_.type != BrightnessCurveType::LINEAR || this->gamma_correct_ == 0.0f) {
-    // Check if we have a configured brightness curve or need to use gamma as curve
-    if (this->brightness_curve_.type == BrightnessCurveType::LINEAR && this->gamma_correct_ != 0.0f) {
-      // Convert gamma correction to curve for backwards compatibility
-      BrightnessCurveProfile gamma_curve(this->gamma_correct_);
-      this->current_values.as_rgbww(red, green, blue, cold_white, warm_white, gamma_curve, constant_brightness);
-    } else {
-      this->current_values.as_rgbww(red, green, blue, cold_white, warm_white, this->brightness_curve_, constant_brightness);
-    }
-  } else {
+  // Check if we have a configured brightness curve (non-default)
+  if (this->brightness_curve_.type != BRIGHTNESS_CURVE_LINEAR) {
+    // Use the configured brightness curve
+    this->current_values.as_rgbww(red, green, blue, cold_white, warm_white, this->brightness_curve_, constant_brightness);
+  } else if (this->gamma_correct_ != 0.0f) {
+    // Fall back to legacy gamma correction for backwards compatibility
     this->current_values.as_rgbww(red, green, blue, cold_white, warm_white, this->gamma_correct_, constant_brightness);
+  } else {
+    // No curve configured, use linear (default brightness curve)
+    this->current_values.as_rgbww(red, green, blue, cold_white, warm_white, this->brightness_curve_, constant_brightness);
   }
 }
 void LightState::current_values_as_rgbct(float *red, float *green, float *blue, float *color_temperature,
                                          float *white_brightness) {
   auto traits = this->get_traits();
-  // Use brightness curve if configured, otherwise fall back to gamma correction
-  if (this->brightness_curve_.type != BrightnessCurveType::LINEAR || this->gamma_correct_ == 0.0f) {
-    // Check if we have a configured brightness curve or need to use gamma as curve
-    if (this->brightness_curve_.type == BrightnessCurveType::LINEAR && this->gamma_correct_ != 0.0f) {
-      // Convert gamma correction to curve for backwards compatibility
-      BrightnessCurveProfile gamma_curve(this->gamma_correct_);
-      this->current_values.as_rgbct(traits.get_min_mireds(), traits.get_max_mireds(), red, green, blue, color_temperature,
-                                    white_brightness, gamma_curve);
-    } else {
-      this->current_values.as_rgbct(traits.get_min_mireds(), traits.get_max_mireds(), red, green, blue, color_temperature,
-                                    white_brightness, this->brightness_curve_);
-    }
-  } else {
+  // Check if we have a configured brightness curve (non-default)
+  if (this->brightness_curve_.type != BRIGHTNESS_CURVE_LINEAR) {
+    // Use the configured brightness curve
+    this->current_values.as_rgbct(traits.get_min_mireds(), traits.get_max_mireds(), red, green, blue, color_temperature,
+                                  white_brightness, this->brightness_curve_);
+  } else if (this->gamma_correct_ != 0.0f) {
+    // Fall back to legacy gamma correction for backwards compatibility
     this->current_values.as_rgbct(traits.get_min_mireds(), traits.get_max_mireds(), red, green, blue, color_temperature,
                                   white_brightness, this->gamma_correct_);
+  } else {
+    // No curve configured, use linear (default brightness curve)
+    this->current_values.as_rgbct(traits.get_min_mireds(), traits.get_max_mireds(), red, green, blue, color_temperature,
+                                  white_brightness, this->brightness_curve_);
   }
 }
 void LightState::current_values_as_cwww(float *cold_white, float *warm_white, bool constant_brightness) {
-  // Use brightness curve if configured, otherwise fall back to gamma correction
-  if (this->brightness_curve_.type != BrightnessCurveType::LINEAR || this->gamma_correct_ == 0.0f) {
-    // Check if we have a configured brightness curve or need to use gamma as curve
-    if (this->brightness_curve_.type == BrightnessCurveType::LINEAR && this->gamma_correct_ != 0.0f) {
-      // Convert gamma correction to curve for backwards compatibility
-      BrightnessCurveProfile gamma_curve(this->gamma_correct_);
-      this->current_values.as_cwww(cold_white, warm_white, gamma_curve, constant_brightness);
-    } else {
-      this->current_values.as_cwww(cold_white, warm_white, this->brightness_curve_, constant_brightness);
-    }
-  } else {
+  // Check if we have a configured brightness curve (non-default)
+  if (this->brightness_curve_.type != BRIGHTNESS_CURVE_LINEAR) {
+    // Use the configured brightness curve
+    this->current_values.as_cwww(cold_white, warm_white, this->brightness_curve_, constant_brightness);
+  } else if (this->gamma_correct_ != 0.0f) {
+    // Fall back to legacy gamma correction for backwards compatibility
     this->current_values.as_cwww(cold_white, warm_white, this->gamma_correct_, constant_brightness);
+  } else {
+    // No curve configured, use linear (default brightness curve)
+    this->current_values.as_cwww(cold_white, warm_white, this->brightness_curve_, constant_brightness);
   }
 }
 void LightState::current_values_as_ct(float *color_temperature, float *white_brightness) {
   auto traits = this->get_traits();
-  // Use brightness curve if configured, otherwise fall back to gamma correction
-  if (this->brightness_curve_.type != BrightnessCurveType::LINEAR || this->gamma_correct_ == 0.0f) {
-    // Check if we have a configured brightness curve or need to use gamma as curve
-    if (this->brightness_curve_.type == BrightnessCurveType::LINEAR && this->gamma_correct_ != 0.0f) {
-      // Convert gamma correction to curve for backwards compatibility
-      BrightnessCurveProfile gamma_curve(this->gamma_correct_);
-      this->current_values.as_ct(traits.get_min_mireds(), traits.get_max_mireds(), color_temperature, white_brightness, gamma_curve);
-    } else {
-      this->current_values.as_ct(traits.get_min_mireds(), traits.get_max_mireds(), color_temperature, white_brightness, this->brightness_curve_);
-    }
-  } else {
+  // Check if we have a configured brightness curve (non-default)
+  if (this->brightness_curve_.type != BRIGHTNESS_CURVE_LINEAR) {
+    // Use the configured brightness curve
+    this->current_values.as_ct(traits.get_min_mireds(), traits.get_max_mireds(), color_temperature, white_brightness, this->brightness_curve_);
+  } else if (this->gamma_correct_ != 0.0f) {
+    // Fall back to legacy gamma correction for backwards compatibility
     this->current_values.as_ct(traits.get_min_mireds(), traits.get_max_mireds(), color_temperature, white_brightness,
                                this->gamma_correct_);
+  } else {
+    // No curve configured, use linear (default brightness curve)
+    this->current_values.as_ct(traits.get_min_mireds(), traits.get_max_mireds(), color_temperature, white_brightness, this->brightness_curve_);
   }
 }
 

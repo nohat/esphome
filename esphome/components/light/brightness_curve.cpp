@@ -1,10 +1,12 @@
 #include "brightness_curve.h"
-#include "esphome/core/helpers.h"
 #include <cmath>
 #include <algorithm>
 
 namespace esphome {
 namespace light {
+
+// Forward declaration of gamma_correct function from helpers
+extern float gamma_correct(float value, float gamma);
 
 static const char *const TAG = "light.brightness_curve";
 
@@ -17,24 +19,24 @@ float apply_brightness_curve(float value, const BrightnessCurveProfile &profile)
   value = std::max(0.0f, std::min(1.0f, value));
   
   switch (profile.type) {
-    case LINEAR:
+    case BRIGHTNESS_CURVE_LINEAR:
       return value;
       
-    case GAMMA:
+    case BRIGHTNESS_CURVE_GAMMA:
       return gamma_correct(value, profile.gamma_params.gamma);
       
-    case EXPONENTIAL:
+    case BRIGHTNESS_CURVE_EXPONENTIAL:
       if (value <= 0.0f) return 0.0f;
       return std::pow(profile.exponential_params.exponent, value - 1.0f);
       
-    case LOGARITHMIC:
+    case BRIGHTNESS_CURVE_LOGARITHMIC:
       if (value <= 0.0f) return 0.0f;
       return std::log(1.0f + value * (profile.logarithmic_params.base - 1.0f)) / std::log(profile.logarithmic_params.base);
       
-    case CUBIC:
+    case BRIGHTNESS_CURVE_CUBIC:
       return value * value * value * profile.cubic_params.factor + value * (1.0f - profile.cubic_params.factor);
       
-    case CUSTOM:
+    case BRIGHTNESS_CURVE_CUSTOM:
       return apply_custom_curve(value, profile.custom_points);
       
     default:

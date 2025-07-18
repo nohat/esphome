@@ -334,100 +334,41 @@ async def setup_brightness_curve(light_var, curve_config):
     if isinstance(curve_config, str):
         curve_type = BRIGHTNESS_CURVE_TYPES[curve_config]
         
-        # Create curve profile based on type with default parameters
-        if curve_type == BrightnessCurveType.LINEAR:
-            profile = cg.StructInitializer(BrightnessCurveProfile)
-        elif curve_type == BrightnessCurveType.GAMMA:
+        if curve_type == BrightnessCurveType.BRIGHTNESS_CURVE_LINEAR:
+            # Default profile - no action needed
+            pass
+        elif curve_type == BrightnessCurveType.BRIGHTNESS_CURVE_GAMMA:
+            # Create gamma curve with default parameter
             profile = cg.StructInitializer(
                 BrightnessCurveProfile,
-                ("type", BrightnessCurveType.GAMMA),
-                ("gamma_params", cg.StructInitializer("", ("gamma", 2.8)))
+                ("type", BrightnessCurveType.BRIGHTNESS_CURVE_GAMMA),
+                ("gamma_params.gamma", 2.8)
             )
-        elif curve_type == BrightnessCurveType.EXPONENTIAL:
-            profile = cg.StructInitializer(
-                BrightnessCurveProfile,
-                ("type", BrightnessCurveType.EXPONENTIAL),
-                ("exponential_params", cg.StructInitializer("", ("exponent", 2.0)))
-            )
-        elif curve_type == BrightnessCurveType.LOGARITHMIC:
-            profile = cg.StructInitializer(
-                BrightnessCurveProfile,
-                ("type", BrightnessCurveType.LOGARITHMIC),
-                ("logarithmic_params", cg.StructInitializer("", ("base", 10.0)))
-            )
-        elif curve_type == BrightnessCurveType.CUBIC:
-            profile = cg.StructInitializer(
-                BrightnessCurveProfile,
-                ("type", BrightnessCurveType.CUBIC),
-                ("cubic_params", cg.StructInitializer("", ("factor", 1.0)))
-            )
+            cg.add(light_var.set_brightness_curve(profile))
         else:
-            profile = cg.StructInitializer(BrightnessCurveProfile)
-        
-        cg.add(light_var.set_brightness_curve(profile))
+            # For now, only support linear and gamma in simple mode
+            cg.add_library("Log", None)
+            cg.add(cg.RawStatement(f'ESP_LOGW("light", "Brightness curve type {curve_config} with default parameters not yet supported in simple mode");'))
         return
     
     # Handle detailed configuration object
     curve_type = BRIGHTNESS_CURVE_TYPES[curve_config[CONF_CURVE_TYPE]]
     
-    if curve_type == BrightnessCurveType.LINEAR:
-        profile = cg.StructInitializer(BrightnessCurveProfile)
-        
-    elif curve_type == BrightnessCurveType.GAMMA:
+    if curve_type == BrightnessCurveType.BRIGHTNESS_CURVE_LINEAR:
+        # Default profile - no action needed  
+        pass
+    elif curve_type == BrightnessCurveType.BRIGHTNESS_CURVE_GAMMA:
         gamma = curve_config.get(CONF_CURVE_GAMMA, 2.8)
         profile = cg.StructInitializer(
             BrightnessCurveProfile,
-            ("type", BrightnessCurveType.GAMMA),
-            ("gamma_params", cg.StructInitializer("", ("gamma", gamma)))
+            ("type", BrightnessCurveType.BRIGHTNESS_CURVE_GAMMA),
+            ("gamma_params.gamma", gamma)
         )
-        
-    elif curve_type == BrightnessCurveType.EXPONENTIAL:
-        exponent = curve_config.get(CONF_CURVE_EXPONENT, 2.0)
-        profile = cg.StructInitializer(
-            BrightnessCurveProfile,
-            ("type", BrightnessCurveType.EXPONENTIAL),
-            ("exponential_params", cg.StructInitializer("", ("exponent", exponent)))
-        )
-        
-    elif curve_type == BrightnessCurveType.LOGARITHMIC:
-        base = curve_config.get(CONF_CURVE_BASE, 10.0)
-        profile = cg.StructInitializer(
-            BrightnessCurveProfile,
-            ("type", BrightnessCurveType.LOGARITHMIC),
-            ("logarithmic_params", cg.StructInitializer("", ("base", base)))
-        )
-        
-    elif curve_type == BrightnessCurveType.CUBIC:
-        factor = curve_config.get(CONF_CURVE_FACTOR, 1.0)
-        profile = cg.StructInitializer(
-            BrightnessCurveProfile,
-            ("type", BrightnessCurveType.CUBIC),
-            ("cubic_params", cg.StructInitializer("", ("factor", factor)))
-        )
-        
-    elif curve_type == BrightnessCurveType.CUSTOM:
-        points = curve_config.get(CONF_CURVE_POINTS, [])
-        # Create vector of BrightnessCurvePoint
-        point_vector = cg.std_vector.template(cg.esphome_ns.struct("BrightnessCurvePoint"))
-        points_var = cg.variable(cg.MockObjClass("", ""), point_vector, literal="")
-        
-        for point in points:
-            point_struct = cg.StructInitializer(
-                cg.esphome_ns.struct("BrightnessCurvePoint"),
-                ("input", point[0]),
-                ("output", point[1])
-            )
-            cg.add(points_var.push_back(point_struct))
-        
-        profile = cg.StructInitializer(
-            BrightnessCurveProfile,
-            ("type", BrightnessCurveType.CUSTOM),
-            ("custom_points", points_var)
-        )
+        cg.add(light_var.set_brightness_curve(profile))
     else:
-        profile = cg.StructInitializer(BrightnessCurveProfile)
-    
-    cg.add(light_var.set_brightness_curve(profile))
+        # For now, only support gamma curves to keep it simple for the MVP
+        cg.add_library("Log", None)
+        cg.add(cg.RawStatement(f'ESP_LOGW("light", "Brightness curve type {curve_config[CONF_CURVE_TYPE]} not yet fully implemented");'))
 
 
 async def register_light(output_var, config):

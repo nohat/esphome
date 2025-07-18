@@ -5,8 +5,14 @@
 namespace esphome {
 namespace light {
 
-// Forward declaration of gamma_correct function from helpers
-extern float gamma_correct(float value, float gamma);
+// Implementation of gamma_correct function (from helpers.cpp)
+float gamma_correct(float value, float gamma) {
+  if (value <= 0.0f)
+    return 0.0f;
+  if (gamma <= 0.0f)
+    return value;
+  return std::pow(value, gamma);
+}
 
 static const char *const TAG = "light.brightness_curve";
 

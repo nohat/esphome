@@ -104,6 +104,113 @@ void LightState::dump_config() {
   }
 }
 void LightState::loop() {
+  // Handle Matter cluster continuous movements
+  uint32_t now = millis();
+  bool movement_updated = false;
+  
+  // Handle level (brightness) movement
+  if (this->level_move_rate_ != 0.0f) {
+    uint32_t elapsed = now - this->movement_start_time_;
+    float delta = (this->level_move_rate_ * elapsed) / 1000.0f;  // rate per second
+    
+    float current_brightness;
+    this->current_values.as_brightness(&current_brightness);
+    float new_brightness = clamp(current_brightness + delta, 0.0f, 1.0f);
+    
+    auto call = this->make_call();
+    call.set_brightness(new_brightness);
+    call.set_transition_length(100);  // Small transition for smooth movement
+    call.perform();
+    
+    this->movement_start_time_ = now;
+    movement_updated = true;
+    
+    // Stop if we hit boundaries
+    if (new_brightness <= 0.0f || new_brightness >= 1.0f) {
+      this->level_move_rate_ = 0.0f;
+    }
+  }
+  
+  // Handle hue movement
+  if (this->hue_move_rate_ != 0.0f) {
+    uint32_t elapsed = now - this->movement_start_time_;
+    float delta = (this->hue_move_rate_ * elapsed) / 1000.0f;  // degrees per second
+    
+    float h, s, v;
+    this->current_values.as_hsv(&h, &s, &v);
+    float new_hue = fmod(h + delta, 360.0f);
+    if (new_hue < 0) new_hue += 360.0f;
+    
+    float r, g, b;
+    int hue_int = static_cast<int>(new_hue);
+    hsv_to_rgb(hue_int, s, v, r, g, b);
+    
+    auto call = this->make_call();
+    call.set_rgb(r, g, b);
+    call.set_transition_length(100);
+    call.perform();
+    
+    this->movement_start_time_ = now;
+    movement_updated = true;
+  }
+  
+  // Handle saturation movement
+  if (this->saturation_move_rate_ != 0.0f) {
+    uint32_t elapsed = now - this->movement_start_time_;
+    float delta = (this->saturation_move_rate_ * elapsed) / 1000.0f;  // units per second
+    
+    float h, s, v;
+    this->current_values.as_hsv(&h, &s, &v);
+    float new_saturation = clamp(s + delta, 0.0f, 1.0f);
+    
+    float r, g, b;
+    int hue_int = static_cast<int>(h);
+    hsv_to_rgb(hue_int, new_saturation, v, r, g, b);
+    
+    auto call = this->make_call();
+    call.set_rgb(r, g, b);
+    call.set_transition_length(100);
+    call.perform();
+    
+    this->movement_start_time_ = now;
+    movement_updated = true;
+    
+    // Stop if we hit boundaries
+    if (new_saturation <= 0.0f || new_saturation >= 1.0f) {
+      this->saturation_move_rate_ = 0.0f;
+    }
+  }
+  
+  // Handle color loop
+  if (this->color_loop_active_) {
+    uint32_t elapsed = now - this->color_loop_start_time_;
+    float cycle_progress = (elapsed / 1000.0f) / this->color_loop_time_seconds_;
+    cycle_progress = fmod(cycle_progress, 1.0f);  // Keep in 0-1 range
+    
+    float current_hue;
+    if (this->color_loop_direction_up_) {
+      current_hue = this->color_loop_start_hue_ + (cycle_progress * 360.0f);
+    } else {
+      current_hue = this->color_loop_start_hue_ - (cycle_progress * 360.0f);
+    }
+    current_hue = fmod(current_hue, 360.0f);
+    if (current_hue < 0) current_hue += 360.0f;
+    
+    float h, s, v;
+    this->current_values.as_hsv(&h, &s, &v);
+    
+    float r, g, b;
+    int hue_int = static_cast<int>(current_hue);
+    hsv_to_rgb(hue_int, s, v, r, g, b);
+    
+    auto call = this->make_call();
+    call.set_rgb(r, g, b);
+    call.set_transition_length(100);
+    call.perform();
+    
+    movement_updated = true;
+  }
+
   // Apply effect (if any)
   auto *effect = this->get_active_effect_();
   if (effect != nullptr) {
@@ -294,6 +401,47 @@ void LightState::save_remote_values_() {
   saved.warm_white = this->remote_values.get_warm_white();
   saved.effect = this->active_effect_index_;
   this->rtc_.save(&saved);
+}
+
+// Matter Level Control Cluster implementation
+void LightState::set_move_rate(float rate) {
+  this->level_move_rate_ = rate;
+  this->movement_start_time_ = millis();
+}
+
+void LightState::stop_move() {
+  this->level_move_rate_ = 0.0f;
+}
+
+// Matter Color Control Cluster implementation 
+void LightState::set_hue_move_rate(float rate) {
+  this->hue_move_rate_ = rate;
+  this->movement_start_time_ = millis();
+}
+
+void LightState::stop_hue_move() {
+  this->hue_move_rate_ = 0.0f;
+}
+
+void LightState::set_saturation_move_rate(float rate) {
+  this->saturation_move_rate_ = rate;
+  this->movement_start_time_ = millis();
+}
+
+void LightState::stop_saturation_move() {
+  this->saturation_move_rate_ = 0.0f;
+}
+
+void LightState::start_color_loop(float start_hue, bool direction_up, uint16_t time_seconds) {
+  this->color_loop_active_ = true;
+  this->color_loop_start_hue_ = start_hue;
+  this->color_loop_direction_up_ = direction_up;
+  this->color_loop_time_seconds_ = time_seconds;
+  this->color_loop_start_time_ = millis();
+}
+
+void LightState::stop_color_loop() {
+  this->color_loop_active_ = false;
 }
 
 }  // namespace light

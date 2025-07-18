@@ -160,6 +160,16 @@ class LightState : public EntityBase, public Component {
   /// Add effects for this light state.
   void add_effects(const std::vector<LightEffect *> &effects);
 
+  // Matter Level Control and Color Control cluster support methods
+  void set_move_rate(float rate);
+  void stop_move();
+  void set_hue_move_rate(float rate);
+  void stop_hue_move();
+  void set_saturation_move_rate(float rate);
+  void stop_saturation_move();
+  void start_color_loop(float start_hue, bool direction_up, uint16_t time_seconds);
+  void stop_color_loop();
+
   /// The result of all the current_values_as_* methods have gamma correction applied.
   void current_values_as_binary(bool *binary);
 
@@ -253,6 +263,17 @@ class LightState : public EntityBase, public Component {
 
   /// Restore mode of the light.
   LightRestoreMode restore_mode_;
+
+  // Matter cluster movement state tracking
+  float level_move_rate_{0.0f};              // Rate for continuous level movement (brightness per second)
+  float hue_move_rate_{0.0f};                // Rate for continuous hue movement (degrees per second)  
+  float saturation_move_rate_{0.0f};         // Rate for continuous saturation movement (units per second)
+  bool color_loop_active_{false};           // Whether color loop is active
+  float color_loop_start_hue_{0.0f};        // Starting hue for color loop
+  bool color_loop_direction_up_{true};      // Direction of color loop (true = increment, false = decrement)
+  uint16_t color_loop_time_seconds_{25};    // Time for one complete loop
+  uint32_t movement_start_time_{0};         // Timestamp when movement started
+  uint32_t color_loop_start_time_{0};       // Timestamp when color loop started
 };
 
 }  // namespace light

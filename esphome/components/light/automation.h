@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esphome/core/automation.h"
+#include "esphome/core/helpers.h"
 #include "light_state.h"
 #include "addressable_light.h"
 
@@ -214,6 +215,327 @@ template<typename... Ts> class AddressableSet : public Action<Ts...> {
     }
     return to_uint8_scale(value);
   }
+};
+
+// Matter Level Control Cluster Actions
+template<typename... Ts> class MoveToLevelAction : public Action<Ts...> {
+ public:
+  explicit MoveToLevelAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(float, level)
+  TEMPLATABLE_VALUE(uint32_t, transition_length)
+  TEMPLATABLE_VALUE(bool, with_on_off)
+
+  void play(Ts... x) override {
+    auto call = this->parent_->make_call();
+    float target_level = this->level_.value(x...);
+    bool with_on_off = this->with_on_off_.value_or(x..., true);
+    
+    // Clamp level to valid range [0.0, 1.0]
+    target_level = clamp(target_level, 0.0f, 1.0f);
+    
+    if (with_on_off) {
+      call.set_state(target_level > 0.0f);
+    }
+    call.set_brightness(target_level);
+    call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.perform();
+  }
+
+ protected:
+  LightState *parent_;
+};
+
+template<typename... Ts> class MoveAction : public Action<Ts...> {
+ public:
+  explicit MoveAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(uint8_t, move_mode)  // 0 = up, 1 = down
+  TEMPLATABLE_VALUE(float, rate)         // rate per second
+
+  void play(Ts... x) override {
+    uint8_t mode = this->move_mode_.value(x...);
+    float rate = this->rate_.value(x...);
+    
+    // Store movement parameters for continuous operation
+    this->parent_->set_move_rate(mode == 0 ? rate : -rate);
+  }
+
+ protected:
+  LightState *parent_;
+};
+
+template<typename... Ts> class StepAction : public Action<Ts...> {
+ public:
+  explicit StepAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(uint8_t, step_mode)  // 0 = up, 1 = down
+  TEMPLATABLE_VALUE(float, step_size)    // step amount
+  TEMPLATABLE_VALUE(uint32_t, transition_length)
+
+  void play(Ts... x) override {
+    auto call = this->parent_->make_call();
+    uint8_t mode = this->step_mode_.value(x...);
+    float step = this->step_size_.value(x...);
+    
+    float current_brightness;
+    this->parent_->remote_values.as_brightness(&current_brightness);
+    
+    float new_brightness = current_brightness + (mode == 0 ? step : -step);
+    new_brightness = clamp(new_brightness, 0.0f, 1.0f);
+    
+    call.set_brightness(new_brightness);
+    call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.perform();
+  }
+
+ protected:
+  LightState *parent_;
+};
+
+template<typename... Ts> class StopLevelAction : public Action<Ts...> {
+ public:
+  explicit StopLevelAction(LightState *parent) : parent_(parent) {}
+
+  void play(Ts... x) override {
+    // Stop any ongoing level movement
+    this->parent_->stop_move();
+  }
+
+ protected:
+  LightState *parent_;
+};
+
+// Matter Color Control Cluster Actions
+template<typename... Ts> class MoveToHueAction : public Action<Ts...> {
+ public:
+  explicit MoveToHueAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(float, hue)          // target hue [0.0, 360.0]
+  TEMPLATABLE_VALUE(uint8_t, direction)  // 0=shortest, 1=longest, 2=up, 3=down
+  TEMPLATABLE_VALUE(uint32_t, transition_length)
+
+  void play(Ts... x) override {
+    auto call = this->parent_->make_call();
+    float target_hue = this->hue_.value(x...);
+    uint8_t dir = this->direction_.value_or(x..., 0);
+    
+    // Convert hue to RGB using current saturation and brightness
+    float current_h, current_s, current_v;
+    this->parent_->remote_values.as_hsv(&current_h, &current_s, &current_v);
+    
+    // Handle hue direction logic
+    if (dir == 1) {  // longest path
+      if (abs(target_hue - current_h) < 180) {
+        target_hue = target_hue > current_h ? target_hue - 360 : target_hue + 360;
+      }
+    } else if (dir == 2) {  // up
+      if (target_hue < current_h) target_hue += 360;
+    } else if (dir == 3) {  // down  
+      if (target_hue > current_h) target_hue -= 360;
+    }
+    // dir == 0 (shortest) is handled automatically
+    
+    float r, g, b;
+    int hue_int = static_cast<int>(target_hue);
+    hsv_to_rgb(hue_int, current_s, current_v, r, g, b);
+    call.set_rgb(r, g, b);
+    call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.perform();
+  }
+};
+
+template<typename... Ts> class MoveHueAction : public Action<Ts...> {
+ public:
+  explicit MoveHueAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(uint8_t, move_mode)  // 0=stop, 1=up, 3=down  
+  TEMPLATABLE_VALUE(float, rate)         // degrees per second
+
+  void play(Ts... x) override {
+    uint8_t mode = this->move_mode_.value(x...);
+    float rate = this->rate_.value(x...);
+    
+    if (mode == 0) {
+      this->parent_->stop_hue_move();
+    } else {
+      float move_rate = (mode == 1) ? rate : -rate;
+      this->parent_->set_hue_move_rate(move_rate);
+    }
+  }
+
+ protected:
+  LightState *parent_;
+};
+
+template<typename... Ts> class StepHueAction : public Action<Ts...> {
+ public:
+  explicit StepHueAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(uint8_t, step_mode)  // 1=up, 3=down
+  TEMPLATABLE_VALUE(float, step_size)    // degrees
+  TEMPLATABLE_VALUE(uint32_t, transition_length)
+
+  void play(Ts... x) override {
+    auto call = this->parent_->make_call();
+    uint8_t mode = this->step_mode_.value(x...);
+    float step = this->step_size_.value(x...);
+    
+    float current_h, current_s, current_v;
+    this->parent_->remote_values.as_hsv(&current_h, &current_s, &current_v);
+    
+    float new_hue = current_h + (mode == 1 ? step : -step);
+    new_hue = fmod(new_hue, 360.0f);
+    if (new_hue < 0) new_hue += 360.0f;
+    
+    float r, g, b;
+    int hue_int = static_cast<int>(new_hue);
+    hsv_to_rgb(hue_int, current_s, current_v, r, g, b);
+    call.set_rgb(r, g, b);
+    call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.perform();
+  }
+};
+
+template<typename... Ts> class MoveToSaturationAction : public Action<Ts...> {
+ public:
+  explicit MoveToSaturationAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(float, saturation)  // target saturation [0.0, 1.0]
+  TEMPLATABLE_VALUE(uint32_t, transition_length)
+
+  void play(Ts... x) override {
+    auto call = this->parent_->make_call();
+    float target_sat = clamp(this->saturation_.value(x...), 0.0f, 1.0f);
+    
+    float current_h, current_s, current_v;
+    this->parent_->remote_values.as_hsv(&current_h, &current_s, &current_v);
+    
+    float r, g, b;
+    int hue_int = static_cast<int>(current_h);
+    hsv_to_rgb(hue_int, target_sat, current_v, r, g, b);
+    call.set_rgb(r, g, b);
+    call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.perform();
+  }
+};
+
+template<typename... Ts> class MoveSaturationAction : public Action<Ts...> {
+ public:
+  explicit MoveSaturationAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(uint8_t, move_mode)  // 0=stop, 1=up, 3=down
+  TEMPLATABLE_VALUE(float, rate)         // rate per second
+
+  void play(Ts... x) override {
+    uint8_t mode = this->move_mode_.value(x...);
+    float rate = this->rate_.value(x...);
+    
+    if (mode == 0) {
+      this->parent_->stop_saturation_move();
+    } else {
+      float move_rate = (mode == 1) ? rate : -rate;
+      this->parent_->set_saturation_move_rate(move_rate);
+    }
+  }
+
+ protected:
+  LightState *parent_;
+};
+
+template<typename... Ts> class StepSaturationAction : public Action<Ts...> {
+ public:
+  explicit StepSaturationAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(uint8_t, step_mode)  // 1=up, 3=down
+  TEMPLATABLE_VALUE(float, step_size)    // step amount [0.0, 1.0]
+  TEMPLATABLE_VALUE(uint32_t, transition_length)
+
+  void play(Ts... x) override {
+    auto call = this->parent_->make_call();
+    uint8_t mode = this->step_mode_.value(x...);
+    float step = this->step_size_.value(x...);
+    
+    float current_h, current_s, current_v;
+    this->parent_->remote_values.as_hsv(&current_h, &current_s, &current_v);
+    
+    float new_sat = current_s + (mode == 1 ? step : -step);
+    new_sat = clamp(new_sat, 0.0f, 1.0f);
+    
+    float r, g, b;
+    int hue_int = static_cast<int>(current_h);
+    hsv_to_rgb(hue_int, new_sat, current_v, r, g, b);
+    call.set_rgb(r, g, b);
+    call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.perform();
+  }
+};
+
+template<typename... Ts> class MoveToHueAndSaturationAction : public Action<Ts...> {
+ public:
+  explicit MoveToHueAndSaturationAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(float, hue)         // target hue [0.0, 360.0]
+  TEMPLATABLE_VALUE(float, saturation)  // target saturation [0.0, 1.0]
+  TEMPLATABLE_VALUE(uint32_t, transition_length)
+
+  void play(Ts... x) override {
+    auto call = this->parent_->make_call();
+    float target_hue = this->hue_.value(x...);
+    float target_sat = clamp(this->saturation_.value(x...), 0.0f, 1.0f);
+    
+    float current_h, current_s, current_v;
+    this->parent_->remote_values.as_hsv(&current_h, &current_s, &current_v);
+    
+    float r, g, b;
+    int hue_int = static_cast<int>(target_hue);
+    hsv_to_rgb(hue_int, target_sat, current_v, r, g, b);
+    call.set_rgb(r, g, b);
+    call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.perform();
+  }
+};
+
+template<typename... Ts> class ColorLoopSetAction : public Action<Ts...> {
+ public:
+  explicit ColorLoopSetAction(LightState *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(uint8_t, action)    // 0=deactivate, 1=activate, 2=activate_from_hue
+  TEMPLATABLE_VALUE(uint8_t, direction) // 0=decrement, 1=increment  
+  TEMPLATABLE_VALUE(uint16_t, time)     // time for one loop in seconds
+  TEMPLATABLE_VALUE(float, start_hue)   // starting hue for activate_from_hue
+
+  void play(Ts... x) override {
+    uint8_t act = this->action_.value(x...);
+    uint8_t dir = this->direction_.value_or(x..., 1);
+    uint16_t loop_time = this->time_.value_or(x..., 25);
+    float start_hue = this->start_hue_.value_or(x..., 0.0f);
+    
+    if (act == 0) {
+      this->parent_->stop_color_loop();
+    } else {
+      float hue = (act == 2) ? start_hue : 0.0f;
+      this->parent_->start_color_loop(hue, dir == 1, loop_time);
+    }
+  }
+
+ protected:
+  LightState *parent_;
+};
+
+template<typename... Ts> class StopMoveStepAction : public Action<Ts...> {
+ public:
+  explicit StopMoveStepAction(LightState *parent) : parent_(parent) {}
+
+  void play(Ts... x) override {
+    // Stop all ongoing color movements
+    this->parent_->stop_hue_move();
+    this->parent_->stop_saturation_move();
+    this->parent_->stop_color_loop();
+  }
+
+ protected:
+  LightState *parent_;
 };
 
 }  // namespace light

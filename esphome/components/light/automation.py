@@ -25,6 +25,19 @@ from esphome.const import (
     CONF_WHITE,
 )
 
+# Matter cluster constants
+CONF_LEVEL = "level"
+CONF_WITH_ON_OFF = "with_on_off"
+CONF_MOVE_MODE = "move_mode"
+CONF_STEP_MODE = "step_mode"
+CONF_STEP_SIZE = "step_size"
+CONF_RATE = "rate"
+CONF_HUE = "hue"
+CONF_SATURATION = "saturation"
+CONF_DIRECTION = "direction"
+CONF_TIME = "time"
+CONF_START_HUE = "start_hue"
+
 from .types import (
     COLOR_MODES,
     LIMIT_MODES,
@@ -37,6 +50,21 @@ from .types import (
     LightIsOnCondition,
     LightState,
     ToggleAction,
+    # Matter Level Control Cluster Actions
+    MoveToLevelAction,
+    MoveAction,
+    StepAction,
+    StopLevelAction,
+    # Matter Color Control Cluster Actions
+    MoveToHueAction,
+    MoveHueAction,
+    StepHueAction,
+    MoveToSaturationAction,
+    MoveSaturationAction,
+    StepSaturationAction,
+    MoveToHueAndSaturationAction,
+    ColorLoopSetAction,
+    StopMoveStepAction,
 )
 
 
@@ -279,3 +307,312 @@ async def light_addressable_set_to_code(config, action_id, template_arg, args):
 async def light_is_on_off_to_code(config, condition_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     return cg.new_Pvariable(condition_id, template_arg, paren)
+
+
+# Matter Level Control Cluster Actions
+
+@automation.register_action(
+    "light.move_to_level",
+    MoveToLevelAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_LEVEL): cv.templatable(cv.percentage),
+        cv.Optional(CONF_TRANSITION_LENGTH): cv.templatable(cv.positive_time_period_milliseconds),
+        cv.Optional(CONF_WITH_ON_OFF, default=True): cv.templatable(cv.boolean),
+    })
+)
+async def move_to_level_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_LEVEL], args, float)
+    cg.add(var.set_level(template_))
+    
+    if CONF_TRANSITION_LENGTH in config:
+        template_ = await cg.templatable(config[CONF_TRANSITION_LENGTH], args, cg.uint32)
+        cg.add(var.set_transition_length(template_))
+    
+    template_ = await cg.templatable(config[CONF_WITH_ON_OFF], args, bool)
+    cg.add(var.set_with_on_off(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.move",
+    MoveAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_MOVE_MODE): cv.templatable(cv.int_range(min=0, max=1)),  # 0=up, 1=down
+        cv.Required(CONF_RATE): cv.templatable(cv.positive_float),  # rate per second
+    })
+)
+async def move_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_MOVE_MODE], args, cg.uint8)
+    cg.add(var.set_move_mode(template_))
+    
+    template_ = await cg.templatable(config[CONF_RATE], args, float)
+    cg.add(var.set_rate(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.step",
+    StepAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_STEP_MODE): cv.templatable(cv.int_range(min=0, max=1)),  # 0=up, 1=down
+        cv.Required(CONF_STEP_SIZE): cv.templatable(cv.percentage),
+        cv.Optional(CONF_TRANSITION_LENGTH): cv.templatable(cv.positive_time_period_milliseconds),
+    })
+)
+async def step_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_STEP_MODE], args, cg.uint8)
+    cg.add(var.set_step_mode(template_))
+    
+    template_ = await cg.templatable(config[CONF_STEP_SIZE], args, float)
+    cg.add(var.set_step_size(template_))
+    
+    if CONF_TRANSITION_LENGTH in config:
+        template_ = await cg.templatable(config[CONF_TRANSITION_LENGTH], args, cg.uint32)
+        cg.add(var.set_transition_length(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.stop_level",
+    StopLevelAction,
+    automation.maybe_simple_id({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+    })
+)
+async def stop_level_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(action_id, template_arg, paren)
+
+
+# Matter Color Control Cluster Actions
+
+@automation.register_action(
+    "light.move_to_hue",
+    MoveToHueAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_HUE): cv.templatable(cv.float_range(min=0, max=360)),
+        cv.Optional(CONF_DIRECTION, default=0): cv.templatable(cv.int_range(min=0, max=3)),  # 0=shortest, 1=longest, 2=up, 3=down
+        cv.Optional(CONF_TRANSITION_LENGTH): cv.templatable(cv.positive_time_period_milliseconds),
+    })
+)
+async def move_to_hue_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_HUE], args, float)
+    cg.add(var.set_hue(template_))
+    
+    template_ = await cg.templatable(config[CONF_DIRECTION], args, cg.uint8)
+    cg.add(var.set_direction(template_))
+    
+    if CONF_TRANSITION_LENGTH in config:
+        template_ = await cg.templatable(config[CONF_TRANSITION_LENGTH], args, cg.uint32)
+        cg.add(var.set_transition_length(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.move_hue",
+    MoveHueAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_MOVE_MODE): cv.templatable(cv.int_range(min=0, max=3)),  # 0=stop, 1=up, 3=down
+        cv.Required(CONF_RATE): cv.templatable(cv.positive_float),  # degrees per second
+    })
+)
+async def move_hue_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_MOVE_MODE], args, cg.uint8)
+    cg.add(var.set_move_mode(template_))
+    
+    template_ = await cg.templatable(config[CONF_RATE], args, float)
+    cg.add(var.set_rate(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.step_hue",
+    StepHueAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_STEP_MODE): cv.templatable(cv.int_range(min=1, max=3)),  # 1=up, 3=down
+        cv.Required(CONF_STEP_SIZE): cv.templatable(cv.float_range(min=0, max=360)),  # degrees
+        cv.Optional(CONF_TRANSITION_LENGTH): cv.templatable(cv.positive_time_period_milliseconds),
+    })
+)
+async def step_hue_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_STEP_MODE], args, cg.uint8)
+    cg.add(var.set_step_mode(template_))
+    
+    template_ = await cg.templatable(config[CONF_STEP_SIZE], args, float)
+    cg.add(var.set_step_size(template_))
+    
+    if CONF_TRANSITION_LENGTH in config:
+        template_ = await cg.templatable(config[CONF_TRANSITION_LENGTH], args, cg.uint32)
+        cg.add(var.set_transition_length(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.move_to_saturation",
+    MoveToSaturationAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_SATURATION): cv.templatable(cv.percentage),
+        cv.Optional(CONF_TRANSITION_LENGTH): cv.templatable(cv.positive_time_period_milliseconds),
+    })
+)
+async def move_to_saturation_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_SATURATION], args, float)
+    cg.add(var.set_saturation(template_))
+    
+    if CONF_TRANSITION_LENGTH in config:
+        template_ = await cg.templatable(config[CONF_TRANSITION_LENGTH], args, cg.uint32)
+        cg.add(var.set_transition_length(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.move_saturation",
+    MoveSaturationAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_MOVE_MODE): cv.templatable(cv.int_range(min=0, max=3)),  # 0=stop, 1=up, 3=down
+        cv.Required(CONF_RATE): cv.templatable(cv.positive_float),  # rate per second
+    })
+)
+async def move_saturation_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_MOVE_MODE], args, cg.uint8)
+    cg.add(var.set_move_mode(template_))
+    
+    template_ = await cg.templatable(config[CONF_RATE], args, float)
+    cg.add(var.set_rate(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.step_saturation",
+    StepSaturationAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_STEP_MODE): cv.templatable(cv.int_range(min=1, max=3)),  # 1=up, 3=down
+        cv.Required(CONF_STEP_SIZE): cv.templatable(cv.percentage),
+        cv.Optional(CONF_TRANSITION_LENGTH): cv.templatable(cv.positive_time_period_milliseconds),
+    })
+)
+async def step_saturation_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_STEP_MODE], args, cg.uint8)
+    cg.add(var.set_step_mode(template_))
+    
+    template_ = await cg.templatable(config[CONF_STEP_SIZE], args, float)
+    cg.add(var.set_step_size(template_))
+    
+    if CONF_TRANSITION_LENGTH in config:
+        template_ = await cg.templatable(config[CONF_TRANSITION_LENGTH], args, cg.uint32)
+        cg.add(var.set_transition_length(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.move_to_hue_and_saturation",
+    MoveToHueAndSaturationAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required(CONF_HUE): cv.templatable(cv.float_range(min=0, max=360)),
+        cv.Required(CONF_SATURATION): cv.templatable(cv.percentage),
+        cv.Optional(CONF_TRANSITION_LENGTH): cv.templatable(cv.positive_time_period_milliseconds),
+    })
+)
+async def move_to_hue_and_saturation_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config[CONF_HUE], args, float)
+    cg.add(var.set_hue(template_))
+    
+    template_ = await cg.templatable(config[CONF_SATURATION], args, float)
+    cg.add(var.set_saturation(template_))
+    
+    if CONF_TRANSITION_LENGTH in config:
+        template_ = await cg.templatable(config[CONF_TRANSITION_LENGTH], args, cg.uint32)
+        cg.add(var.set_transition_length(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.color_loop_set",
+    ColorLoopSetAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+        cv.Required("action"): cv.templatable(cv.int_range(min=0, max=2)),  # 0=deactivate, 1=activate, 2=activate_from_hue
+        cv.Optional(CONF_DIRECTION, default=1): cv.templatable(cv.int_range(min=0, max=1)),  # 0=decrement, 1=increment
+        cv.Optional(CONF_TIME, default=25): cv.templatable(cv.int_range(min=1, max=65534)),  # time for one loop in seconds
+        cv.Optional(CONF_START_HUE, default=0): cv.templatable(cv.float_range(min=0, max=360)),  # starting hue
+    })
+)
+async def color_loop_set_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    
+    template_ = await cg.templatable(config["action"], args, cg.uint8)
+    cg.add(var.set_action(template_))
+    
+    template_ = await cg.templatable(config[CONF_DIRECTION], args, cg.uint8)
+    cg.add(var.set_direction(template_))
+    
+    template_ = await cg.templatable(config[CONF_TIME], args, cg.uint16)
+    cg.add(var.set_time(template_))
+    
+    template_ = await cg.templatable(config[CONF_START_HUE], args, float)
+    cg.add(var.set_start_hue(template_))
+    
+    return var
+
+
+@automation.register_action(
+    "light.stop_move_step",
+    StopMoveStepAction,
+    automation.maybe_simple_id({
+        cv.Required(CONF_ID): cv.use_id(LightState),
+    })
+)
+async def stop_move_step_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(action_id, template_arg, paren)

@@ -208,6 +208,20 @@ class LightColorValues {
     }
   }
 
+  /// Convert these light color values to HSV representation and write them to hue, saturation, value.
+  void as_hsv(float *hue, float *saturation, float *value) const {
+    if (this->color_mode_ & ColorCapability::RGB) {
+      int hue_int;
+      rgb_to_hsv(this->red_, this->green_, this->blue_, hue_int, *saturation, *value);
+      *hue = static_cast<float>(hue_int);
+      *value = this->state_ * this->brightness_ * this->color_brightness_;
+    } else {
+      *hue = 0.0f;
+      *saturation = 0.0f;
+      *value = this->state_ * this->brightness_;
+    }
+  }
+
   /// Compare this LightColorValues to rhs, return true if and only if all attributes match.
   bool operator==(const LightColorValues &rhs) const {
     return color_mode_ == rhs.color_mode_ && state_ == rhs.state_ && brightness_ == rhs.brightness_ &&

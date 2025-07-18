@@ -40,6 +40,24 @@ ToggleAction = light_ns.class_("ToggleAction", automation.Action)
 LightControlAction = light_ns.class_("LightControlAction", automation.Action)
 DimRelativeAction = light_ns.class_("DimRelativeAction", automation.Action)
 AddressableSet = light_ns.class_("AddressableSet", automation.Action)
+
+# Matter Level Control Cluster Actions
+MoveToLevelAction = light_ns.class_("MoveToLevelAction", automation.Action)
+MoveAction = light_ns.class_("MoveAction", automation.Action)
+StepAction = light_ns.class_("StepAction", automation.Action)
+StopLevelAction = light_ns.class_("StopLevelAction", automation.Action)
+
+# Matter Color Control Cluster Actions
+MoveToHueAction = light_ns.class_("MoveToHueAction", automation.Action)
+MoveHueAction = light_ns.class_("MoveHueAction", automation.Action)
+StepHueAction = light_ns.class_("StepHueAction", automation.Action)
+MoveToSaturationAction = light_ns.class_("MoveToSaturationAction", automation.Action)
+MoveSaturationAction = light_ns.class_("MoveSaturationAction", automation.Action)
+StepSaturationAction = light_ns.class_("StepSaturationAction", automation.Action)
+MoveToHueAndSaturationAction = light_ns.class_("MoveToHueAndSaturationAction", automation.Action)
+ColorLoopSetAction = light_ns.class_("ColorLoopSetAction", automation.Action)
+StopMoveStepAction = light_ns.class_("StopMoveStepAction", automation.Action)
+
 LightIsOnCondition = light_ns.class_("LightIsOnCondition", automation.Condition)
 LightIsOffCondition = light_ns.class_("LightIsOffCondition", automation.Condition)
 

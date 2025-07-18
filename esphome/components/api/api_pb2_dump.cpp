@@ -111,6 +111,28 @@ template<> const char *proto_enum_to_string<enums::ColorMode>(enums::ColorMode v
       return "UNKNOWN";
   }
 }
+template<> const char *proto_enum_to_string<enums::LightDynamicState>(enums::LightDynamicState value) {
+  switch (value) {
+    case enums::LIGHT_DYNAMIC_STATE_STABLE:
+      return "LIGHT_DYNAMIC_STATE_STABLE";
+    case enums::LIGHT_DYNAMIC_STATE_LEVEL_MOVING_UP:
+      return "LIGHT_DYNAMIC_STATE_LEVEL_MOVING_UP";
+    case enums::LIGHT_DYNAMIC_STATE_LEVEL_MOVING_DOWN:
+      return "LIGHT_DYNAMIC_STATE_LEVEL_MOVING_DOWN";
+    case enums::LIGHT_DYNAMIC_STATE_HUE_MOVING:
+      return "LIGHT_DYNAMIC_STATE_HUE_MOVING";
+    case enums::LIGHT_DYNAMIC_STATE_SATURATION_MOVING_UP:
+      return "LIGHT_DYNAMIC_STATE_SATURATION_MOVING_UP";
+    case enums::LIGHT_DYNAMIC_STATE_SATURATION_MOVING_DOWN:
+      return "LIGHT_DYNAMIC_STATE_SATURATION_MOVING_DOWN";
+    case enums::LIGHT_DYNAMIC_STATE_COLOR_LOOP_ACTIVE:
+      return "LIGHT_DYNAMIC_STATE_COLOR_LOOP_ACTIVE";
+    case enums::LIGHT_DYNAMIC_STATE_TRANSITIONING:
+      return "LIGHT_DYNAMIC_STATE_TRANSITIONING";
+    default:
+      return "UNKNOWN";
+  }
+}
 #endif
 #ifdef USE_SENSOR
 template<> const char *proto_enum_to_string<enums::SensorStateClass>(enums::SensorStateClass value) {
@@ -375,8 +397,7 @@ template<> const char *proto_enum_to_string<enums::MediaPlayerFormatPurpose>(enu
 }
 #endif
 #ifdef USE_BLUETOOTH_PROXY
-template<>
-const char *proto_enum_to_string<enums::BluetoothDeviceRequestType>(enums::BluetoothDeviceRequestType value) {
+template<> const char *proto_enum_to_string<enums::BluetoothDeviceRequestType>(enums::BluetoothDeviceRequestType value) {
   switch (value) {
     case enums::BLUETOOTH_DEVICE_REQUEST_TYPE_CONNECT:
       return "BLUETOOTH_DEVICE_REQUEST_TYPE_CONNECT";
@@ -425,8 +446,7 @@ template<> const char *proto_enum_to_string<enums::BluetoothScannerMode>(enums::
   }
 }
 #endif
-template<>
-const char *proto_enum_to_string<enums::VoiceAssistantSubscribeFlag>(enums::VoiceAssistantSubscribeFlag value) {
+template<> const char *proto_enum_to_string<enums::VoiceAssistantSubscribeFlag>(enums::VoiceAssistantSubscribeFlag value) {
   switch (value) {
     case enums::VOICE_ASSISTANT_SUBSCRIBE_NONE:
       return "VOICE_ASSISTANT_SUBSCRIBE_NONE";
@@ -529,8 +549,7 @@ template<> const char *proto_enum_to_string<enums::AlarmControlPanelState>(enums
       return "UNKNOWN";
   }
 }
-template<>
-const char *proto_enum_to_string<enums::AlarmControlPanelStateCommand>(enums::AlarmControlPanelStateCommand value) {
+template<> const char *proto_enum_to_string<enums::AlarmControlPanelStateCommand>(enums::AlarmControlPanelStateCommand value) {
   switch (value) {
     case enums::ALARM_CONTROL_PANEL_DISARM:
       return "ALARM_CONTROL_PANEL_DISARM";
@@ -1294,6 +1313,10 @@ void LightStateResponse::dump_to(std::string &out) const {
   out.append("  device_id: ");
   snprintf(buffer, sizeof(buffer), "%" PRIu32, this->device_id);
   out.append(buffer);
+  out.append("\n");
+
+  out.append("  dynamic_state: ");
+  out.append(proto_enum_to_string<enums::LightDynamicState>(this->dynamic_state));
   out.append("\n");
   out.append("}");
 }

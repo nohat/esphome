@@ -477,6 +477,7 @@ uint16_t APIConnection::try_send_light_state(EntityBase *entity, APIConnection *
   resp.warm_white = values.get_warm_white();
   if (light->supports_effects())
     resp.effect = light->get_effect_name();
+  resp.dynamic_state = static_cast<enums::LightDynamicState>(light->get_dynamic_state());
   fill_entity_state_base(light, resp);
   return encode_message_to_buffer(resp, LightStateResponse::MESSAGE_TYPE, conn, remaining_size, is_single);
 }

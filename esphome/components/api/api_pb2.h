@@ -58,6 +58,16 @@ enum ColorMode : uint32_t {
   COLOR_MODE_RGB_COLOR_TEMPERATURE = 47,
   COLOR_MODE_RGB_COLD_WARM_WHITE = 51,
 };
+enum LightDynamicState : uint32_t {
+  LIGHT_DYNAMIC_STATE_STABLE = 0,
+  LIGHT_DYNAMIC_STATE_LEVEL_MOVING_UP = 1,
+  LIGHT_DYNAMIC_STATE_LEVEL_MOVING_DOWN = 2,
+  LIGHT_DYNAMIC_STATE_HUE_MOVING = 3,
+  LIGHT_DYNAMIC_STATE_SATURATION_MOVING_UP = 4,
+  LIGHT_DYNAMIC_STATE_SATURATION_MOVING_DOWN = 5,
+  LIGHT_DYNAMIC_STATE_COLOR_LOOP_ACTIVE = 6,
+  LIGHT_DYNAMIC_STATE_TRANSITIONING = 7,
+};
 #endif
 #ifdef USE_SENSOR
 enum SensorStateClass : uint32_t {
@@ -776,7 +786,7 @@ class ListEntitiesLightResponse : public InfoResponseProtoMessage {
 class LightStateResponse : public StateResponseProtoMessage {
  public:
   static constexpr uint16_t MESSAGE_TYPE = 24;
-  static constexpr uint16_t ESTIMATED_SIZE = 67;
+  static constexpr uint16_t ESTIMATED_SIZE = 69;
 #ifdef HAS_PROTO_MESSAGE_DUMP
   const char *message_name() const override { return "light_state_response"; }
 #endif
@@ -792,6 +802,7 @@ class LightStateResponse : public StateResponseProtoMessage {
   float cold_white{0.0f};
   float warm_white{0.0f};
   std::string effect{};
+  enums::LightDynamicState dynamic_state{};
   void encode(ProtoWriteBuffer buffer) const override;
   void calculate_size(uint32_t &total_size) const override;
 #ifdef HAS_PROTO_MESSAGE_DUMP

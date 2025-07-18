@@ -471,5 +471,37 @@ void LightState::stop_color_loop() {
   this->color_loop_active_ = false;
 }
 
+LightDynamicState LightState::get_dynamic_state() {
+  // Check for color loop first as it takes priority
+  if (this->color_loop_active_) {
+    return LightDynamicState::COLOR_LOOP_ACTIVE;
+  }
+  
+  // Check for level (brightness) movement
+  if (this->level_move_rate_ != 0.0f) {
+    return this->level_move_rate_ > 0.0f ? LightDynamicState::LEVEL_MOVING_UP 
+                                         : LightDynamicState::LEVEL_MOVING_DOWN;
+  }
+  
+  // Check for hue movement
+  if (this->hue_move_rate_ != 0.0f) {
+    return LightDynamicState::HUE_MOVING;
+  }
+  
+  // Check for saturation movement
+  if (this->saturation_move_rate_ != 0.0f) {
+    return this->saturation_move_rate_ > 0.0f ? LightDynamicState::SATURATION_MOVING_UP 
+                                              : LightDynamicState::SATURATION_MOVING_DOWN;
+  }
+  
+  // Check if a transformer (transition/flash) is active
+  if (this->is_transformer_active()) {
+    return LightDynamicState::TRANSITIONING;
+  }
+  
+  // No movements or transitions active
+  return LightDynamicState::STABLE;
+}
+
 }  // namespace light
 }  // namespace esphome

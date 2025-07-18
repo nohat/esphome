@@ -35,6 +35,19 @@ LIMIT_MODES = {
     "DO_NOTHING": LimitMode.DO_NOTHING,
 }
 
+# Dynamic state modes for tracking light movement/transition status
+LightDynamicState = light_ns.enum("LightDynamicState", is_class=True)
+LIGHT_DYNAMIC_STATES = {
+    "STABLE": LightDynamicState.STABLE,
+    "LEVEL_MOVING_UP": LightDynamicState.LEVEL_MOVING_UP,
+    "LEVEL_MOVING_DOWN": LightDynamicState.LEVEL_MOVING_DOWN,
+    "HUE_MOVING": LightDynamicState.HUE_MOVING,
+    "SATURATION_MOVING_UP": LightDynamicState.SATURATION_MOVING_UP,
+    "SATURATION_MOVING_DOWN": LightDynamicState.SATURATION_MOVING_DOWN,
+    "COLOR_LOOP_ACTIVE": LightDynamicState.COLOR_LOOP_ACTIVE,
+    "TRANSITIONING": LightDynamicState.TRANSITIONING,
+}
+
 # Actions
 ToggleAction = light_ns.class_("ToggleAction", automation.Action)
 LightControlAction = light_ns.class_("LightControlAction", automation.Action)

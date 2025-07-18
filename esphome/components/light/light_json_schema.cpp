@@ -70,6 +70,35 @@ void LightJSONSchema::dump_json(LightState &state, JsonObject root) {
     color["c"] = uint8_t(values.get_cold_white() * 255);
     color["w"] = uint8_t(values.get_warm_white() * 255);
   }
+  
+  // Add dynamic state information for Home Assistant
+  auto dynamic_state = state.get_dynamic_state();
+  switch (dynamic_state) {
+    case LightDynamicState::STABLE:
+      root["dynamic_state"] = "stable";
+      break;
+    case LightDynamicState::LEVEL_MOVING_UP:
+      root["dynamic_state"] = "level_moving_up";
+      break;
+    case LightDynamicState::LEVEL_MOVING_DOWN:
+      root["dynamic_state"] = "level_moving_down";
+      break;
+    case LightDynamicState::HUE_MOVING:
+      root["dynamic_state"] = "hue_moving";
+      break;
+    case LightDynamicState::SATURATION_MOVING_UP:
+      root["dynamic_state"] = "saturation_moving_up";
+      break;
+    case LightDynamicState::SATURATION_MOVING_DOWN:
+      root["dynamic_state"] = "saturation_moving_down";
+      break;
+    case LightDynamicState::COLOR_LOOP_ACTIVE:
+      root["dynamic_state"] = "color_loop_active";
+      break;
+    case LightDynamicState::TRANSITIONING:
+      root["dynamic_state"] = "transitioning";
+      break;
+  }
 }
 
 void LightJSONSchema::parse_color_json(LightState &state, LightCall &call, JsonObject root) {

@@ -641,8 +641,7 @@ void APIServerConnection::on_subscribe_logs_request(const SubscribeLogsRequest &
     this->subscribe_logs(msg);
   }
 }
-void APIServerConnection::on_subscribe_homeassistant_services_request(
-    const SubscribeHomeassistantServicesRequest &msg) {
+void APIServerConnection::on_subscribe_homeassistant_services_request(const SubscribeHomeassistantServicesRequest &msg) {
   if (this->check_authenticated_()) {
     this->subscribe_homeassistant_services(msg);
   }
@@ -802,8 +801,7 @@ void APIServerConnection::on_valve_command_request(const ValveCommandRequest &ms
 }
 #endif
 #ifdef USE_BLUETOOTH_PROXY
-void APIServerConnection::on_subscribe_bluetooth_le_advertisements_request(
-    const SubscribeBluetoothLEAdvertisementsRequest &msg) {
+void APIServerConnection::on_subscribe_bluetooth_le_advertisements_request(const SubscribeBluetoothLEAdvertisementsRequest &msg) {
   if (this->check_authenticated_()) {
     this->subscribe_bluetooth_le_advertisements(msg);
   }
@@ -859,8 +857,7 @@ void APIServerConnection::on_bluetooth_gatt_notify_request(const BluetoothGATTNo
 }
 #endif
 #ifdef USE_BLUETOOTH_PROXY
-void APIServerConnection::on_subscribe_bluetooth_connections_free_request(
-    const SubscribeBluetoothConnectionsFreeRequest &msg) {
+void APIServerConnection::on_subscribe_bluetooth_connections_free_request(const SubscribeBluetoothConnectionsFreeRequest &msg) {
   if (this->check_authenticated_()) {
     BluetoothConnectionsFreeResponse ret = this->subscribe_bluetooth_connections_free(msg);
     if (!this->send_message(ret)) {
@@ -870,8 +867,7 @@ void APIServerConnection::on_subscribe_bluetooth_connections_free_request(
 }
 #endif
 #ifdef USE_BLUETOOTH_PROXY
-void APIServerConnection::on_unsubscribe_bluetooth_le_advertisements_request(
-    const UnsubscribeBluetoothLEAdvertisementsRequest &msg) {
+void APIServerConnection::on_unsubscribe_bluetooth_le_advertisements_request(const UnsubscribeBluetoothLEAdvertisementsRequest &msg) {
   if (this->check_authenticated_()) {
     this->unsubscribe_bluetooth_le_advertisements(msg);
   }

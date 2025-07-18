@@ -28,6 +28,17 @@ enum LightRestoreMode : uint8_t {
   LIGHT_RESTORE_AND_ON,
 };
 
+enum LightDynamicState : uint8_t {
+  STABLE,                    // No movements or transitions active
+  LEVEL_MOVING_UP,          // Brightness increasing continuously
+  LEVEL_MOVING_DOWN,        // Brightness decreasing continuously
+  HUE_MOVING,               // Hue changing continuously
+  SATURATION_MOVING_UP,     // Saturation increasing continuously
+  SATURATION_MOVING_DOWN,   // Saturation decreasing continuously
+  COLOR_LOOP_ACTIVE,        // Color loop running
+  TRANSITIONING,            // Normal transition in progress
+};
+
 struct LightStateRTCState {
   LightStateRTCState(ColorMode color_mode, bool state, float brightness, float color_brightness, float red, float green,
                      float blue, float white, float color_temp, float cold_white, float warm_white)
@@ -176,6 +187,9 @@ class LightState : public EntityBase, public Component {
   void stop_saturation_move();
   void start_color_loop(float start_hue, bool direction_up, uint16_t time_seconds);
   void stop_color_loop();
+
+  /// Get the current dynamic state of the light (movement/transition status)
+  LightDynamicState get_dynamic_state();
 
   /// The result of all the current_values_as_* methods have gamma correction applied.
   void current_values_as_binary(bool *binary);

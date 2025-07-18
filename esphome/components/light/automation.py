@@ -25,6 +25,8 @@ from esphome.const import (
     CONF_WHITE,
 )
 
+from .easing import CONF_EASING, EASING_SCHEMA, easing_to_code
+
 from .types import (
     COLOR_MODES,
     LIMIT_MODES,
@@ -49,6 +51,7 @@ from .types import (
             cv.Optional(CONF_TRANSITION_LENGTH): cv.templatable(
                 cv.positive_time_period_milliseconds
             ),
+            cv.Optional(CONF_EASING): EASING_SCHEMA,
         }
     ),
 )
@@ -60,6 +63,9 @@ async def light_toggle_to_code(config, action_id, template_arg, args):
             config[CONF_TRANSITION_LENGTH], args, cg.uint32
         )
         cg.add(var.set_transition_length(template_))
+    if CONF_EASING in config:
+        easing_curve = await easing_to_code(config[CONF_EASING])
+        cg.add(var.set_easing_curve(easing_curve))
     return var
 
 
@@ -89,6 +95,7 @@ LIGHT_CONTROL_ACTION_SCHEMA = LIGHT_STATE_SCHEMA.extend(
             cv.positive_time_period_milliseconds
         ),
         cv.Exclusive(CONF_EFFECT, "transformer"): cv.templatable(cv.string),
+        cv.Optional(CONF_EASING): EASING_SCHEMA,
     }
 )
 
@@ -99,6 +106,7 @@ LIGHT_TURN_OFF_ACTION_SCHEMA = automation.maybe_simple_id(
             cv.positive_time_period_milliseconds
         ),
         cv.Optional(CONF_STATE, default=False): False,
+        cv.Optional(CONF_EASING): EASING_SCHEMA,
     }
 )
 LIGHT_TURN_ON_ACTION_SCHEMA = automation.maybe_simple_id(
@@ -166,6 +174,9 @@ async def light_control_to_code(config, action_id, template_arg, args):
     if CONF_EFFECT in config:
         template_ = await cg.templatable(config[CONF_EFFECT], args, cg.std_string)
         cg.add(var.set_effect(template_))
+    if CONF_EASING in config:
+        easing_curve = await easing_to_code(config[CONF_EASING])
+        cg.add(var.set_easing_curve(easing_curve))
     return var
 
 
@@ -179,6 +190,7 @@ LIGHT_DIM_RELATIVE_ACTION_SCHEMA = cv.Schema(
         cv.Optional(CONF_TRANSITION_LENGTH): cv.templatable(
             cv.positive_time_period_milliseconds
         ),
+        cv.Optional(CONF_EASING): EASING_SCHEMA,
         cv.Optional(CONF_BRIGHTNESS_LIMITS): cv.Schema(
             {
                 cv.Optional(CONF_MIN_BRIGHTNESS, default="0%"): cv.percentage,
@@ -203,6 +215,9 @@ async def light_dim_relative_to_code(config, action_id, template_arg, args):
     if CONF_TRANSITION_LENGTH in config:
         templ = await cg.templatable(config[CONF_TRANSITION_LENGTH], args, cg.uint32)
         cg.add(var.set_transition_length(templ))
+    if CONF_EASING in config:
+        easing_curve = await easing_to_code(config[CONF_EASING])
+        cg.add(var.set_easing_curve(easing_curve))
     if conf := config.get(CONF_BRIGHTNESS_LIMITS):
         cg.add(
             var.set_min_max_brightness(

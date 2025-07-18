@@ -111,7 +111,7 @@ void LightCall::perform() {
       this->parent_->stop_effect_();
     }
 
-    this->parent_->start_transition_(v, this->transition_length_, this->get_publish_());
+    this->parent_->start_transition_(v, this->transition_length_, this->get_publish_(), this->easing_curve_);
 
   } else if (this->has_effect_()) {
     // EFFECT
@@ -586,6 +586,12 @@ IMPLEMENT_LIGHT_CALL_SETTER(white, float, FLAG_HAS_WHITE)
 IMPLEMENT_LIGHT_CALL_SETTER(color_temperature, float, FLAG_HAS_COLOR_TEMPERATURE)
 IMPLEMENT_LIGHT_CALL_SETTER(cold_white, float, FLAG_HAS_COLD_WHITE)
 IMPLEMENT_LIGHT_CALL_SETTER(warm_white, float, FLAG_HAS_WARM_WHITE)
+
+// Easing curve setter - implemented manually since we don't have a flag
+LightCall &LightCall::set_easing_curve(const EasingCurve &easing_curve) {
+  this->easing_curve_ = easing_curve;
+  return *this;
+}
 LightCall &LightCall::set_effect(optional<std::string> effect) {
   if (effect.has_value())
     this->set_effect(*effect);

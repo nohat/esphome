@@ -5,12 +5,16 @@
 #include "light_color_values.h"
 #include "light_state.h"
 #include "light_transformer.h"
+#include "easing_curves.h"
 
 namespace esphome {
 namespace light {
 
 class LightTransitionTransformer : public LightTransformer {
  public:
+  /// Set the easing curve for this transition
+  void set_easing_curve(const EasingCurve &curve) { this->easing_curve_ = curve; }
+  
   void start() override {
     // When turning light on from off state, use target state and only increase brightness from zero.
     if (!this->start_values_.is_on() && this->target_values_.is_on()) {
@@ -50,18 +54,20 @@ class LightTransitionTransformer : public LightTransformer {
     if (this->changing_color_mode_)
       p = p < 0.5f ? p * 2 : (p - 0.5) * 2;
 
-    float v = LightTransitionTransformer::smoothed_progress(p);
+    float v = this->easing_curve_.evaluate(p);
     return LightColorValues::lerp(start, end, v);
   }
 
  protected:
   // This looks crazy, but it reduces to 6x^5 - 15x^4 + 10x^3 which is just a smooth sigmoid-like
   // transition from 0 to 1 on x = [0, 1]
+  // NOTE: This is kept for backward compatibility, but the easing_curve_ is now used by default
   static float smoothed_progress(float x) { return x * x * x * (x * (x * 6.0f - 15.0f) + 10.0f); }
 
   LightColorValues end_values_{};
   LightColorValues intermediate_values_{};
   bool changing_color_mode_{false};
+  EasingCurve easing_curve_{EasingType::SMOOTH};  // Default to current behavior
 };
 
 class LightFlashTransformer : public LightTransformer {

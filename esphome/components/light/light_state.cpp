@@ -236,8 +236,14 @@ void LightState::stop_effect_() {
   this->active_effect_index_ = 0;
 }
 
-void LightState::start_transition_(const LightColorValues &target, uint32_t length, bool set_remote_values) {
+void LightState::start_transition_(const LightColorValues &target, uint32_t length, bool set_remote_values,
+                                  const EasingCurve &easing_curve) {
   this->transformer_ = this->output_->create_default_transition();
+  // Set the easing curve if the transformer supports it
+  auto transition_transformer = dynamic_cast<LightTransitionTransformer*>(this->transformer_.get());
+  if (transition_transformer != nullptr) {
+    transition_transformer->set_easing_curve(easing_curve);
+  }
   this->transformer_->setup(this->current_values, target, length);
 
   if (set_remote_values) {

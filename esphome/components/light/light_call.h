@@ -1,6 +1,7 @@
 #pragma once
 
 #include "light_color_values.h"
+#include "easing_curves.h"
 #include <set>
 
 namespace esphome {
@@ -39,6 +40,13 @@ class LightCall {
   LightCall &set_transition_length(uint32_t transition_length);
   /// Set the transition length property if the light supports transitions.
   LightCall &set_transition_length_if_supported(uint32_t transition_length);
+  /** Set the easing curve for transitions.
+   *
+   * This argument is ignored for starting flashes and effects.
+   *
+   * Defaults to SMOOTH (current ESPHome behavior).
+   */
+  LightCall &set_easing_curve(const EasingCurve &easing_curve);
   /// Start and set the flash length of this call in milliseconds.
   LightCall &set_flash_length(optional<uint32_t> flash_length);
   /// Start and set the flash length of this call in milliseconds.
@@ -205,6 +213,8 @@ class LightCall {
     FLAG_HAS_COLOR_MODE = 1 << 13,
     FLAG_PUBLISH = 1 << 14,
     FLAG_SAVE = 1 << 15,
+    // Note: All 16 bits are now used. If more flags are needed,
+    // the flags_ type would need to be changed to uint32_t
   };
 
   bool has_transition_() { return (this->flags_ & FLAG_HAS_TRANSITION) != 0; }
@@ -243,6 +253,7 @@ class LightCall {
   uint16_t flags_{FLAG_PUBLISH | FLAG_SAVE};  // Tracks which values are set
   ColorMode color_mode_;
   bool state_;
+  EasingCurve easing_curve_{EasingType::SMOOTH};  // Easing curve for transitions
 };
 
 }  // namespace light

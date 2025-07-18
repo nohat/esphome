@@ -3,6 +3,7 @@
 #include "esphome/core/automation.h"
 #include "light_state.h"
 #include "addressable_light.h"
+#include "easing_curves.h"
 
 namespace esphome {
 namespace light {
@@ -14,15 +15,19 @@ template<typename... Ts> class ToggleAction : public Action<Ts...> {
   explicit ToggleAction(LightState *state) : state_(state) {}
 
   TEMPLATABLE_VALUE(uint32_t, transition_length)
+  
+  void set_easing_curve(const EasingCurve &curve) { this->easing_curve_ = curve; }
 
   void play(Ts... x) override {
     auto call = this->state_->toggle();
     call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.set_easing_curve(this->easing_curve_);
     call.perform();
   }
 
  protected:
   LightState *state_;
+  EasingCurve easing_curve_{EasingType::SMOOTH};  // Default to current behavior
 };
 
 template<typename... Ts> class LightControlAction : public Action<Ts...> {
@@ -43,6 +48,8 @@ template<typename... Ts> class LightControlAction : public Action<Ts...> {
   TEMPLATABLE_VALUE(float, cold_white)
   TEMPLATABLE_VALUE(float, warm_white)
   TEMPLATABLE_VALUE(std::string, effect)
+  
+  void set_easing_curve(const EasingCurve &curve) { this->easing_curve_ = curve; }
 
   void play(Ts... x) override {
     auto call = this->parent_->make_call();
@@ -60,11 +67,13 @@ template<typename... Ts> class LightControlAction : public Action<Ts...> {
     call.set_effect(this->effect_.optional_value(x...));
     call.set_flash_length(this->flash_length_.optional_value(x...));
     call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.set_easing_curve(this->easing_curve_);
     call.perform();
   }
 
  protected:
   LightState *parent_;
+  EasingCurve easing_curve_{EasingType::SMOOTH};  // Default to current behavior
 };
 
 template<typename... Ts> class DimRelativeAction : public Action<Ts...> {
@@ -73,6 +82,8 @@ template<typename... Ts> class DimRelativeAction : public Action<Ts...> {
 
   TEMPLATABLE_VALUE(float, relative_brightness)
   TEMPLATABLE_VALUE(uint32_t, transition_length)
+  
+  void set_easing_curve(const EasingCurve &curve) { this->easing_curve_ = curve; }
 
   void play(Ts... x) override {
     auto call = this->parent_->make_call();
@@ -87,6 +98,7 @@ template<typename... Ts> class DimRelativeAction : public Action<Ts...> {
     call.set_brightness(new_brightness);
 
     call.set_transition_length(this->transition_length_.optional_value(x...));
+    call.set_easing_curve(this->easing_curve_);
     call.perform();
   }
 
@@ -102,6 +114,7 @@ template<typename... Ts> class DimRelativeAction : public Action<Ts...> {
   float min_brightness_{0.0};
   float max_brightness_{1.0};
   LimitMode limit_mode_{LimitMode::CLAMP};
+  EasingCurve easing_curve_{EasingType::SMOOTH};  // Default to current behavior
 };
 
 template<typename... Ts> class LightIsOnCondition : public Condition<Ts...> {

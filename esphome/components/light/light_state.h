@@ -9,6 +9,7 @@
 #include "light_effect.h"
 #include "light_traits.h"
 #include "light_transformer.h"
+#include "easing_curves.h"
 
 #include <vector>
 
@@ -202,7 +203,8 @@ class LightState : public EntityBase, public Component {
   /// Internal method to stop the current effect (if one is active).
   void stop_effect_();
   /// Internal method to start a transition to the target color with the given length.
-  void start_transition_(const LightColorValues &target, uint32_t length, bool set_remote_values);
+  void start_transition_(const LightColorValues &target, uint32_t length, bool set_remote_values, 
+                        const EasingCurve &easing_curve = EasingCurve{EasingType::SMOOTH});
 
   /// Internal method to start a flash for the specified amount of time.
   void start_flash_(const LightColorValues &target, uint32_t length, bool set_remote_values);

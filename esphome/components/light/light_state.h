@@ -111,6 +111,9 @@ class LightState : public EntityBase, public Component {
   /// Publish the currently active state to the frontend.
   void publish_state();
 
+  /// Publish the currently active state to the frontend with optional throttling for continuous movements.
+  void publish_state(bool respect_throttling);
+
   /// Get the light output associated with this object.
   LightOutput *get_output() const;
 
@@ -140,6 +143,10 @@ class LightState : public EntityBase, public Component {
   /// Set the flash transition length
   void set_flash_transition_length(uint32_t flash_transition_length);
   uint32_t get_flash_transition_length() const;
+
+  /// Set the remote values reporting frequency for transitions/movements
+  void set_remote_values_reporting_frequency(uint32_t frequency);
+  uint32_t get_remote_values_reporting_frequency() const;
 
   /// Set the gamma correction factor
   void set_gamma_correct(float gamma_correct);
@@ -237,6 +244,8 @@ class LightState : public EntityBase, public Component {
   uint32_t default_transition_length_{};
   /// Transition length to use for flash transitions.
   uint32_t flash_transition_length_{};
+  /// Remote values reporting frequency for transitions and movements in ms.
+  uint32_t remote_values_reporting_frequency_{1000};  // Default 1 second
   /// Gamma correction factor for the light.
   float gamma_correct_{};
   /// Whether the light value should be written in the next cycle.
@@ -274,6 +283,7 @@ class LightState : public EntityBase, public Component {
   uint16_t color_loop_time_seconds_{25};    // Time for one complete loop
   uint32_t movement_start_time_{0};         // Timestamp when movement started
   uint32_t color_loop_start_time_{0};       // Timestamp when color loop started
+  uint32_t last_remote_values_publish_time_{0};  // Timestamp of last remote values publication
 };
 
 }  // namespace light

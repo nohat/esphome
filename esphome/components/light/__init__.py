@@ -29,6 +29,7 @@ from esphome.const import (
     CONF_OUTPUT_ID,
     CONF_POWER_SUPPLY,
     CONF_RED,
+    CONF_REMOTE_VALUES_REPORTING_FREQUENCY,
     CONF_RESTORE_MODE,
     CONF_STATE,
     CONF_TRIGGER_ID,
@@ -126,6 +127,9 @@ BRIGHTNESS_ONLY_LIGHT_SCHEMA = LIGHT_SCHEMA.extend(
         ): cv.positive_time_period_milliseconds,
         cv.Optional(
             CONF_FLASH_TRANSITION_LENGTH, default="0s"
+        ): cv.positive_time_period_milliseconds,
+        cv.Optional(
+            CONF_REMOTE_VALUES_REPORTING_FREQUENCY, default="1s"
         ): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_EFFECTS): validate_effects(MONOCHROMATIC_EFFECTS),
     }
@@ -237,6 +241,10 @@ async def setup_light_core_(light_var, output_var, config):
         flash_transition_length := config.get(CONF_FLASH_TRANSITION_LENGTH)
     ) is not None:
         cg.add(light_var.set_flash_transition_length(flash_transition_length))
+    if (
+        remote_values_reporting_frequency := config.get(CONF_REMOTE_VALUES_REPORTING_FREQUENCY)
+    ) is not None:
+        cg.add(light_var.set_remote_values_reporting_frequency(remote_values_reporting_frequency))
     if (gamma_correct := config.get(CONF_GAMMA_CORRECT)) is not None:
         cg.add(light_var.set_gamma_correct(gamma_correct))
     effects = await cg.build_registry_list(

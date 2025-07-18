@@ -1,4 +1,5 @@
 #include "esphome/core/log.h"
+#include "esphome/core/helpers.h"
 
 #include "light_output.h"
 #include "light_state.h"
@@ -120,6 +121,7 @@ void LightState::loop() {
     auto call = this->make_call();
     call.set_brightness(new_brightness);
     call.set_transition_length(100);  // Small transition for smooth movement
+    call.set_publish(false);  // Disable immediate publishing for throttling
     call.perform();
     
     this->movement_start_time_ = now;
@@ -148,6 +150,7 @@ void LightState::loop() {
     auto call = this->make_call();
     call.set_rgb(r, g, b);
     call.set_transition_length(100);
+    call.set_publish(false);  // Disable immediate publishing for throttling
     call.perform();
     
     this->movement_start_time_ = now;
@@ -170,6 +173,7 @@ void LightState::loop() {
     auto call = this->make_call();
     call.set_rgb(r, g, b);
     call.set_transition_length(100);
+    call.set_publish(false);  // Disable immediate publishing for throttling
     call.perform();
     
     this->movement_start_time_ = now;
@@ -206,9 +210,15 @@ void LightState::loop() {
     auto call = this->make_call();
     call.set_rgb(r, g, b);
     call.set_transition_length(100);
+    call.set_publish(false);  // Disable immediate publishing for throttling
     call.perform();
     
     movement_updated = true;
+  }
+
+  // Publish remote values with throttling if any movement was updated
+  if (movement_updated) {
+    this->publish_state(true);  // Use throttling for continuous movements
   }
 
   // Apply effect (if any)
@@ -247,7 +257,20 @@ void LightState::loop() {
 
 float LightState::get_setup_priority() const { return setup_priority::HARDWARE - 1.0f; }
 
-void LightState::publish_state() { this->remote_values_callback_.call(); }
+void LightState::publish_state() { 
+  this->publish_state(false);  // No throttling for normal state changes
+}
+
+void LightState::publish_state(bool respect_throttling) {
+  if (respect_throttling) {
+    uint32_t now = millis();
+    if (now - this->last_remote_values_publish_time_ < this->remote_values_reporting_frequency_) {
+      return; // Skip publication due to throttling
+    }
+    this->last_remote_values_publish_time_ = now;
+  }
+  this->remote_values_callback_.call(); 
+}
 
 LightOutput *LightState::get_output() const { return this->output_; }
 std::string LightState::get_effect_name() {
@@ -273,6 +296,10 @@ void LightState::set_flash_transition_length(uint32_t flash_transition_length) {
   this->flash_transition_length_ = flash_transition_length;
 }
 uint32_t LightState::get_flash_transition_length() const { return this->flash_transition_length_; }
+void LightState::set_remote_values_reporting_frequency(uint32_t frequency) {
+  this->remote_values_reporting_frequency_ = frequency;
+}
+uint32_t LightState::get_remote_values_reporting_frequency() const { return this->remote_values_reporting_frequency_; }
 void LightState::set_gamma_correct(float gamma_correct) { this->gamma_correct_ = gamma_correct; }
 void LightState::set_restore_mode(LightRestoreMode restore_mode) { this->restore_mode_ = restore_mode; }
 void LightState::set_initial_state(const LightStateRTCState &initial_state) { this->initial_state_ = initial_state; }

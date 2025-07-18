@@ -302,7 +302,7 @@ void LightState::start_continuous_dimming(bool direction_up, float speed) {
   this->stop_effect_();
   
   // Create a continuous dimming transformer
-  this->transformer_ = make_unique<LightContinuousDimmingTransformer>(direction_up, speed);
+  this->transformer_ = std::make_unique<LightContinuousDimmingTransformer>(direction_up, speed);
   this->transformer_->setup(this->current_values, this->current_values, UINT32_MAX);  // Use max length since it's continuous
   
   // Don't update remote_values immediately - they'll be updated when dimming stops

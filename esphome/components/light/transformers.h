@@ -9,6 +9,9 @@
 namespace esphome {
 namespace light {
 
+// Forward declaration
+class LightContinuousDimmingTransformer;
+
 class LightTransitionTransformer : public LightTransformer {
  public:
   void start() override {

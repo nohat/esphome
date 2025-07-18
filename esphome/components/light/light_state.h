@@ -187,6 +187,29 @@ class LightState : public EntityBase, public Component {
    */
   bool is_transformer_active();
 
+  /// Start continuous transitions (ongoing until stopped or limit reached)
+  void start_continuous_brightness(TransitionDirection direction, float speed = 1.0f);
+  void start_continuous_color_temperature(TransitionDirection direction, float speed = 1.0f);
+  void start_continuous_hue(TransitionDirection direction, float speed = 1.0f);
+  void start_continuous_saturation(TransitionDirection direction, float speed = 1.0f);
+  /// CIE XY continuous transitions for advanced color control
+  void start_continuous_cie_x(TransitionDirection direction, float speed = 0.01f);
+  void start_continuous_cie_y(TransitionDirection direction, float speed = 0.01f);
+  /// Stop any active continuous transition
+  void stop_continuous_transition();
+
+  /// Unified continuous transition method (alternative to individual methods above)
+  void start_continuous_transition(ColorTransitionType type, TransitionDirection direction, float speed = 1.0f);
+
+  /// Step commands for relative changes with transitions
+  void step_brightness(float delta, uint32_t transition_time_ms = 0);
+  void step_hue(float delta_degrees, uint32_t transition_time_ms = 0, HueTransitionPath path = HUE_PATH_SHORTEST);
+  void step_saturation(float delta, uint32_t transition_time_ms = 0);
+  void step_color_temperature(float delta_mireds, uint32_t transition_time_ms = 0);
+
+  /// Enhanced hue transition with path control
+  void transition_to_hue(float target_hue, uint32_t transition_time_ms = 0, HueTransitionPath path = HUE_PATH_SHORTEST);
+
  protected:
   friend LightOutput;
   friend LightCall;

@@ -1,4 +1,6 @@
 #include "esphome/core/log.h"
+#include "esphome/core/helpers.h"
+#include <cmath>
 
 #include "light_output.h"
 #include "light_state.h"
@@ -294,6 +296,162 @@ void LightState::save_remote_values_() {
   saved.warm_white = this->remote_values.get_warm_white();
   saved.effect = this->active_effect_index_;
   this->rtc_.save(&saved);
+}
+
+void LightState::start_continuous_brightness(TransitionDirection direction, float speed) {
+  // Create a ColorTransitionTransformer and set it as the active transformer
+  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_BRIGHTNESS, direction, speed);
+  // Use the continuous setup method
+  this->transformer_->setup(this->current_values);
+  this->is_transformer_active_ = true;
+}
+
+void LightState::start_continuous_color_temperature(TransitionDirection direction, float speed) {
+  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_COLOR_TEMPERATURE, direction, speed);
+  this->transformer_->setup(this->current_values);
+  this->is_transformer_active_ = true;
+}
+
+void LightState::start_continuous_hue(TransitionDirection direction, float speed) {
+  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_HUE, direction, speed);
+  this->transformer_->setup(this->current_values);
+  this->is_transformer_active_ = true;
+}
+
+void LightState::start_continuous_saturation(TransitionDirection direction, float speed) {
+  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_SATURATION, direction, speed);
+  this->transformer_->setup(this->current_values);
+  this->is_transformer_active_ = true;
+}
+
+void LightState::start_continuous_cie_x(TransitionDirection direction, float speed) {
+  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_CIE_X, direction, speed);
+  this->transformer_->setup(this->current_values);
+  this->is_transformer_active_ = true;
+}
+
+void LightState::start_continuous_cie_y(TransitionDirection direction, float speed) {
+  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_CIE_Y, direction, speed);
+  this->transformer_->setup(this->current_values);
+  this->is_transformer_active_ = true;
+}
+
+/// Unified continuous transition method
+void LightState::start_continuous_transition(ContinuousTransitionType type, TransitionDirection direction,
+                                             float speed) {
+  this->transformer_ = make_unique<ColorTransitionTransformer>(type, direction, speed);
+  this->transformer_->setup(this->current_values);
+  this->is_transformer_active_ = true;
+}
+
+void LightState::stop_continuous_transition() {
+  // Simply stop the current transformer - the existing loop logic will handle cleanup
+  if (this->transformer_ != nullptr) {
+    this->transformer_->stop();
+    this->transformer_ = nullptr;
+    this->is_transformer_active_ = false;
+  }
+}
+
+/// Step commands for Matter compatibility (relative changes with transitions)
+void LightState::step_brightness(float delta, uint32_t transition_time_ms) {
+  auto current = this->current_values;
+  float new_brightness = clamp(current.get_brightness() + delta, 0.0f, 1.0f);
+
+  LightCall call = this->make_call();
+  call.set_brightness(new_brightness);
+  if (transition_time_ms > 0) {
+    call.set_transition_length(transition_time_ms);
+  }
+  call.perform();
+}
+
+void LightState::step_hue(float delta_degrees, uint32_t transition_time_ms, HueTransitionPath path) {
+  auto current = this->current_values;
+  float current_hue = current.get_hue();
+  float new_hue;
+
+  // Apply path-aware hue calculation
+  switch (path) {
+    case HUE_PATH_CLOCKWISE:
+      new_hue = fmod(current_hue + delta_degrees + 360.0f, 360.0f);
+      break;
+    case HUE_PATH_COUNTER_CLOCKWISE:
+      new_hue = fmod(current_hue - delta_degrees + 360.0f, 360.0f);
+      break;
+    case HUE_PATH_SHORTEST:
+    case HUE_PATH_LONGEST:
+    default:
+      // For step commands, default behavior is simple addition
+      new_hue = fmod(current_hue + delta_degrees + 360.0f, 360.0f);
+      break;
+  }
+
+  LightCall call = this->make_call();
+  call.set_hue(new_hue);
+  if (transition_time_ms > 0) {
+    call.set_transition_length(transition_time_ms);
+  }
+  call.perform();
+}
+
+void LightState::step_saturation(float delta, uint32_t transition_time_ms) {
+  auto current = this->current_values;
+  float new_saturation = clamp(current.get_saturation() + delta, 0.0f, 1.0f);
+
+  LightCall call = this->make_call();
+  call.set_saturation(new_saturation);
+  if (transition_time_ms > 0) {
+    call.set_transition_length(transition_time_ms);
+  }
+  call.perform();
+}
+
+void LightState::step_color_temperature(float delta_mireds, uint32_t transition_time_ms) {
+  auto current = this->current_values;
+  float current_mireds = current.get_color_temperature();
+  float new_mireds = current_mireds + delta_mireds;
+
+  // Clamp to reasonable color temperature range (1000K-10000K = 100-1000 mireds)
+  new_mireds = clamp(new_mireds, 100.0f, 1000.0f);
+
+  LightCall call = this->make_call();
+  call.set_color_temperature(new_mireds);
+  if (transition_time_ms > 0) {
+    call.set_transition_length(transition_time_ms);
+  }
+  call.perform();
+}
+
+void LightState::transition_to_hue(float target_hue, uint32_t transition_time_ms, HueTransitionPath path) {
+  auto current = this->current_values;
+  float current_hue = current.get_hue();
+  float final_hue = target_hue;
+
+  // Calculate shortest/longest path for hue transitions
+  if (path == HUE_PATH_SHORTEST || path == HUE_PATH_LONGEST) {
+    float direct_distance = abs(target_hue - current_hue);
+    float wrap_distance = 360.0f - direct_distance;
+
+    bool use_direct_path =
+        (path == HUE_PATH_SHORTEST) ? (direct_distance <= wrap_distance) : (direct_distance > wrap_distance);
+
+    if (!use_direct_path) {
+      // Use wrapped path - adjust target to the other side of the circle
+      if (target_hue > current_hue) {
+        final_hue = target_hue - 360.0f;
+      } else {
+        final_hue = target_hue + 360.0f;
+      }
+    }
+  }
+
+  LightCall call = this->make_call();
+  call.set_hue(final_hue);
+  if (transition_time_ms > 0) {
+    call.set_transition_length(transition_time_ms);
+  }
+  call.perform();
 }
 
 }  // namespace light

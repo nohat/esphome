@@ -9,6 +9,30 @@ namespace light {
 
 inline static uint8_t to_uint8_scale(float x) { return static_cast<uint8_t>(roundf(x * 255.0f)); }
 
+/// Types of color transitions supported
+enum ColorTransitionType : uint8_t {
+  COLOR_TRANSITION_BRIGHTNESS,
+  COLOR_TRANSITION_COLOR_TEMPERATURE,
+  COLOR_TRANSITION_HUE,
+  COLOR_TRANSITION_SATURATION,
+  COLOR_TRANSITION_CIE_X,
+  COLOR_TRANSITION_CIE_Y,
+};
+
+/// Direction for transitions
+enum TransitionDirection : uint8_t {
+  TRANSITION_DIRECTION_UP,
+  TRANSITION_DIRECTION_DOWN,
+};
+
+/// Path selection for hue transitions (shortest/longest around color wheel)
+enum HueTransitionPath : uint8_t {
+  HUE_PATH_SHORTEST,           ///< Choose shortest path around color wheel
+  HUE_PATH_LONGEST,            ///< Choose longest path around color wheel
+  HUE_PATH_CLOCKWISE,          ///< Force clockwise direction
+  HUE_PATH_COUNTER_CLOCKWISE,  ///< Force counter-clockwise direction
+};
+
 /** This class represents the color state for a light object.
  *
  * The representation of the color state is dependent on the active color mode. A color mode consists of multiple
@@ -290,6 +314,49 @@ class LightColorValues {
   float get_warm_white() const { return this->warm_white_; }
   /// Set the warm white property of these light color values. In range 0.0 to 1.0.
   void set_warm_white(float warm_white) { this->warm_white_ = clamp(warm_white, 0.0f, 1.0f); }
+
+  // ========== COLOR TRANSITION UTILITIES ==========
+
+  /// Apply a relative change to brightness (clamped to 0-1)
+  void update_brightness(float delta);
+
+  /// Apply a relative change to color temperature (clamped to valid range)
+  void update_color_temperature(float delta);
+
+  /// Apply a relative change to hue (wraps around 0-360)
+  void update_hue(float delta, HueTransitionPath path = HUE_PATH_SHORTEST);
+
+  /// Apply a relative change to saturation (clamped to 0-1)
+  void update_saturation(float delta);
+
+  /// Apply a relative change to CIE X coordinate (clamped to 0-1)
+  void update_cie_x(float delta);
+
+  /// Apply a relative change to CIE Y coordinate (clamped to 0-1)
+  void update_cie_y(float delta);
+
+  /// Get the current value for a specific color transition type
+  float get_transition_value(ColorTransitionType type) const;
+
+  /// Calculate the shortest hue distance between two hue values
+  static float calculate_hue_distance(float from_hue, float to_hue, HueTransitionPath path);
+
+  /// Enhanced lerp function that supports hue path selection for transitions
+  static LightColorValues lerp_with_hue_path(const LightColorValues &start, const LightColorValues &end,
+                                             float completion, HueTransitionPath hue_path = HUE_PATH_SHORTEST);
+
+ private:
+  static float clamp_value(float value, float min, float max) {
+    return value < min ? min : (value > max ? max : value);
+  }
+
+  static float wrap_hue(float hue) {
+    while (hue < 0.0f)
+      hue += 360.0f;
+    while (hue >= 360.0f)
+      hue -= 360.0f;
+    return hue;
+  }
 
  protected:
   ColorMode color_mode_;

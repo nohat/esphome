@@ -35,6 +35,33 @@ LIMIT_MODES = {
     "DO_NOTHING": LimitMode.DO_NOTHING,
 }
 
+
+# Continuous transitions
+ContinuousTransitionType = light_ns.enum("ContinuousTransitionType", is_class=True)
+CONTINUOUS_TRANSITION_TYPES = {
+    "NONE": ContinuousTransitionType.CONTINUOUS_NONE,
+    "BRIGHTNESS": ContinuousTransitionType.CONTINUOUS_BRIGHTNESS,
+    "COLOR_TEMPERATURE": ContinuousTransitionType.CONTINUOUS_COLOR_TEMPERATURE,
+    "HUE": ContinuousTransitionType.CONTINUOUS_HUE,
+    "SATURATION": ContinuousTransitionType.CONTINUOUS_SATURATION,
+    "CIE_X": ContinuousTransitionType.CONTINUOUS_CIE_X,
+    "CIE_Y": ContinuousTransitionType.CONTINUOUS_CIE_Y,
+}
+
+TransitionDirection = light_ns.enum("TransitionDirection", is_class=True)
+TRANSITION_DIRECTIONS = {
+    "UP": TransitionDirection.TRANSITION_DIRECTION_UP,
+    "DOWN": TransitionDirection.TRANSITION_DIRECTION_DOWN,
+}
+
+HueTransitionPath = light_ns.enum("HueTransitionPath", is_class=True)
+HUE_TRANSITION_PATHS = {
+    "SHORTEST": HueTransitionPath.HUE_PATH_SHORTEST,
+    "LONGEST": HueTransitionPath.HUE_PATH_LONGEST,
+    "CLOCKWISE": HueTransitionPath.HUE_PATH_CLOCKWISE,
+    "COUNTER_CLOCKWISE": HueTransitionPath.HUE_PATH_COUNTER_CLOCKWISE,
+}
+
 # Actions
 ToggleAction = light_ns.class_("ToggleAction", automation.Action)
 LightControlAction = light_ns.class_("LightControlAction", automation.Action)

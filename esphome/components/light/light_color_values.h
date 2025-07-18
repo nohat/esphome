@@ -2,6 +2,7 @@
 
 #include "esphome/core/helpers.h"
 #include "color_mode.h"
+#include "brightness_curve.h"
 #include <cmath>
 
 namespace esphome {
@@ -203,6 +204,87 @@ class LightColorValues {
       *color_temperature =
           (this->color_temperature_ - color_temperature_cw) / (color_temperature_ww - color_temperature_cw);
       *white_brightness = gamma_correct(this->state_ * this->brightness_ * white_level, gamma);
+    } else {  // Probably won't get here but put this here anyway.
+      *white_brightness = 0;
+    }
+  }
+
+  // ===== Brightness curve versions of as_* methods =====
+
+  /// Convert these light color values to a brightness-only representation using brightness curve.
+  void as_brightness(float *brightness, const BrightnessCurveProfile &curve) const {
+    *brightness = apply_brightness_curve(this->state_ * this->brightness_, curve);
+  }
+
+  /// Convert these light color values to an RGB representation using brightness curve.
+  void as_rgb(float *red, float *green, float *blue, const BrightnessCurveProfile &curve, bool color_interlock = false) const {
+    if (this->color_mode_ & ColorCapability::RGB) {
+      float brightness = this->state_ * this->brightness_ * this->color_brightness_;
+      *red = apply_brightness_curve(brightness * this->red_, curve);
+      *green = apply_brightness_curve(brightness * this->green_, curve);
+      *blue = apply_brightness_curve(brightness * this->blue_, curve);
+    } else {
+      *red = *green = *blue = 0;
+    }
+  }
+
+  /// Convert these light color values to an RGBW representation using brightness curve.
+  void as_rgbw(float *red, float *green, float *blue, float *white, const BrightnessCurveProfile &curve,
+               bool color_interlock = false) const {
+    this->as_rgb(red, green, blue, curve);
+    if (this->color_mode_ & ColorCapability::WHITE) {
+      *white = apply_brightness_curve(this->state_ * this->brightness_ * this->white_, curve);
+    } else {
+      *white = 0;
+    }
+  }
+
+  /// Convert these light color values to an RGBWW representation using brightness curve.
+  void as_rgbww(float *red, float *green, float *blue, float *cold_white, float *warm_white, const BrightnessCurveProfile &curve,
+                bool constant_brightness = false) const {
+    this->as_rgb(red, green, blue, curve);
+    this->as_cwww(cold_white, warm_white, curve, constant_brightness);
+  }
+
+  /// Convert these light color values to an RGB+CT+BR representation using brightness curve.
+  void as_rgbct(float color_temperature_cw, float color_temperature_ww, float *red, float *green, float *blue,
+                float *color_temperature, float *white_brightness, const BrightnessCurveProfile &curve) const {
+    this->as_rgb(red, green, blue, curve);
+    this->as_ct(color_temperature_cw, color_temperature_ww, color_temperature, white_brightness, curve);
+  }
+
+  /// Convert these light color values to an CWWW representation using brightness curve.
+  void as_cwww(float *cold_white, float *warm_white, const BrightnessCurveProfile &curve, bool constant_brightness = false) const {
+    if (this->color_mode_ & ColorCapability::COLD_WARM_WHITE) {
+      const float cw_level = apply_brightness_curve(this->cold_white_, curve);
+      const float ww_level = apply_brightness_curve(this->warm_white_, curve);
+      const float white_level = apply_brightness_curve(this->state_ * this->brightness_, curve);
+      if (!constant_brightness) {
+        *cold_white = white_level * cw_level;
+        *warm_white = white_level * ww_level;
+      } else {
+        // Just multiplying by cw_level / (cw_level + ww_level) would divide out the brightness information from the
+        // cold_white and warm_white settings (i.e. cw=0.8, ww=0.4 would be identical to cw=0.4, ww=0.2), which breaks
+        // transitions. Use the highest value as the brightness for the white channels (the alternative, using cw+ww/2,
+        // reduces to cw/2 and ww/2, which would still limit brightness to 100% of a single channel, but isn't very
+        // useful in all other aspects -- that behaviour can also be achieved by limiting the output power).
+        const float sum = cw_level > 0 || ww_level > 0 ? cw_level + ww_level : 1;  // Don't divide by zero.
+        *cold_white = white_level * std::max(cw_level, ww_level) * cw_level / sum;
+        *warm_white = white_level * std::max(cw_level, ww_level) * ww_level / sum;
+      }
+    } else {
+      *cold_white = *warm_white = 0;
+    }
+  }
+
+  /// Convert these light color values to a CT+BR representation using brightness curve.
+  void as_ct(float color_temperature_cw, float color_temperature_ww, float *color_temperature, float *white_brightness,
+             const BrightnessCurveProfile &curve) const {
+    const float white_level = this->color_mode_ & ColorCapability::RGB ? this->white_ : 1;
+    if (this->color_mode_ & ColorCapability::COLOR_TEMPERATURE) {
+      *color_temperature =
+          (this->color_temperature_ - color_temperature_cw) / (color_temperature_ww - color_temperature_cw);
+      *white_brightness = apply_brightness_curve(this->state_ * this->brightness_ * white_level, curve);
     } else {  // Probably won't get here but put this here anyway.
       *white_brightness = 0;
     }

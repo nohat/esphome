@@ -9,6 +9,7 @@
 #include "light_effect.h"
 #include "light_traits.h"
 #include "light_transformer.h"
+#include "brightness_curve.h"
 
 #include <vector>
 
@@ -145,6 +146,10 @@ class LightState : public EntityBase, public Component {
   void set_gamma_correct(float gamma_correct);
   float get_gamma_correct() const { return this->gamma_correct_; }
 
+  /// Set the brightness curve profile
+  void set_brightness_curve(const BrightnessCurveProfile &brightness_curve);
+  const BrightnessCurveProfile &get_brightness_curve() const { return this->brightness_curve_; }
+
   /// Set the restore mode of this light
   void set_restore_mode(LightRestoreMode restore_mode);
 
@@ -229,6 +234,8 @@ class LightState : public EntityBase, public Component {
   uint32_t flash_transition_length_{};
   /// Gamma correction factor for the light.
   float gamma_correct_{};
+  /// Brightness curve profile for the light.
+  BrightnessCurveProfile brightness_curve_{};
   /// Whether the light value should be written in the next cycle.
   bool next_write_{true};
   // for effects, true if a transformer (transition) is active.

@@ -7,12 +7,19 @@ import esphome.config_validation as cv
 from esphome.const import (
     CONF_BLUE,
     CONF_BRIGHTNESS,
+    CONF_BRIGHTNESS_CURVE,
     CONF_COLD_WHITE,
     CONF_COLD_WHITE_COLOR_TEMPERATURE,
     CONF_COLOR_BRIGHTNESS,
     CONF_COLOR_CORRECT,
     CONF_COLOR_MODE,
     CONF_COLOR_TEMPERATURE,
+    CONF_CURVE_BASE,
+    CONF_CURVE_EXPONENT,
+    CONF_CURVE_FACTOR,
+    CONF_CURVE_GAMMA,
+    CONF_CURVE_POINTS,
+    CONF_CURVE_TYPE,
     CONF_DEFAULT_TRANSITION_LENGTH,
     CONF_EFFECTS,
     CONF_ENTITY_CATEGORY,
@@ -53,6 +60,9 @@ from .effects import (
 from .types import (  # noqa
     AddressableLight,
     AddressableLightState,
+    BrightnessCurveProfile,
+    BrightnessCurveType,
+    BRIGHTNESS_CURVE_TYPES,
     ColorMode,
     LightOutput,
     LightState,
@@ -112,6 +122,49 @@ LIGHT_SCHEMA = (
 
 LIGHT_SCHEMA.add_extra(entity_duplicate_validator("light"))
 
+# Helper function to validate curve points
+def validate_curve_points(points):
+    """Validate custom curve points are sorted and in valid range."""
+    if not points:
+        raise cv.Invalid("Custom curve must have at least one point")
+    
+    # Convert to list of [input, output] pairs
+    validated_points = []
+    for point in points:
+        if not isinstance(point, list) or len(point) != 2:
+            raise cv.Invalid("Each curve point must be a list of [input, output]")
+        input_val, output_val = point
+        if not (0.0 <= input_val <= 1.0):
+            raise cv.Invalid("Curve point input must be between 0.0 and 1.0")
+        if not (0.0 <= output_val <= 1.0):
+            raise cv.Invalid("Curve point output must be between 0.0 and 1.0")
+        validated_points.append([float(input_val), float(output_val)])
+    
+    # Sort by input value
+    validated_points.sort(key=lambda x: x[0])
+    
+    # Check for duplicate input values
+    for i in range(1, len(validated_points)):
+        if validated_points[i][0] == validated_points[i-1][0]:
+            raise cv.Invalid(f"Duplicate input value {validated_points[i][0]} in curve points")
+    
+    return validated_points
+
+# Brightness curve configuration schema
+BRIGHTNESS_CURVE_SCHEMA = cv.Any(
+    # Simple string for curve type with default parameters
+    cv.enum(BRIGHTNESS_CURVE_TYPES, upper=True),
+    # Detailed configuration object
+    cv.Schema({
+        cv.Required(CONF_CURVE_TYPE): cv.enum(BRIGHTNESS_CURVE_TYPES, upper=True),
+        cv.Optional(CONF_CURVE_GAMMA, default=2.8): cv.positive_float,
+        cv.Optional(CONF_CURVE_EXPONENT, default=2.0): cv.positive_float,
+        cv.Optional(CONF_CURVE_BASE, default=10.0): cv.positive_float,
+        cv.Optional(CONF_CURVE_FACTOR, default=1.0): cv.All(cv.positive_float, cv.Range(min=0.0, max=1.0)),
+        cv.Optional(CONF_CURVE_POINTS): cv.All(cv.ensure_list, validate_curve_points),
+    })
+)
+
 BINARY_LIGHT_SCHEMA = LIGHT_SCHEMA.extend(
     {
         cv.Optional(CONF_EFFECTS): validate_effects(BINARY_EFFECTS),
@@ -121,6 +174,7 @@ BINARY_LIGHT_SCHEMA = LIGHT_SCHEMA.extend(
 BRIGHTNESS_ONLY_LIGHT_SCHEMA = LIGHT_SCHEMA.extend(
     {
         cv.Optional(CONF_GAMMA_CORRECT, default=2.8): cv.positive_float,
+        cv.Optional(CONF_BRIGHTNESS_CURVE): BRIGHTNESS_CURVE_SCHEMA,
         cv.Optional(
             CONF_DEFAULT_TRANSITION_LENGTH, default="1s"
         ): cv.positive_time_period_milliseconds,
@@ -239,6 +293,10 @@ async def setup_light_core_(light_var, output_var, config):
         cg.add(light_var.set_flash_transition_length(flash_transition_length))
     if (gamma_correct := config.get(CONF_GAMMA_CORRECT)) is not None:
         cg.add(light_var.set_gamma_correct(gamma_correct))
+    
+    # Handle brightness curve configuration
+    if (brightness_curve_config := config.get(CONF_BRIGHTNESS_CURVE)) is not None:
+        await setup_brightness_curve(light_var, brightness_curve_config)
     effects = await cg.build_registry_list(
         EFFECTS_REGISTRY, config.get(CONF_EFFECTS, [])
     )
@@ -267,6 +325,109 @@ async def setup_light_core_(light_var, output_var, config):
 
     if web_server_config := config.get(CONF_WEB_SERVER):
         await web_server.add_entity_config(light_var, web_server_config)
+
+
+
+async def setup_brightness_curve(light_var, curve_config):
+    """Set up brightness curve configuration for a light."""
+    # Handle simple string configuration (just curve type)
+    if isinstance(curve_config, str):
+        curve_type = BRIGHTNESS_CURVE_TYPES[curve_config]
+        
+        # Create curve profile based on type with default parameters
+        if curve_type == BrightnessCurveType.LINEAR:
+            profile = cg.StructInitializer(BrightnessCurveProfile)
+        elif curve_type == BrightnessCurveType.GAMMA:
+            profile = cg.StructInitializer(
+                BrightnessCurveProfile,
+                ("type", BrightnessCurveType.GAMMA),
+                ("gamma_params", cg.StructInitializer("", ("gamma", 2.8)))
+            )
+        elif curve_type == BrightnessCurveType.EXPONENTIAL:
+            profile = cg.StructInitializer(
+                BrightnessCurveProfile,
+                ("type", BrightnessCurveType.EXPONENTIAL),
+                ("exponential_params", cg.StructInitializer("", ("exponent", 2.0)))
+            )
+        elif curve_type == BrightnessCurveType.LOGARITHMIC:
+            profile = cg.StructInitializer(
+                BrightnessCurveProfile,
+                ("type", BrightnessCurveType.LOGARITHMIC),
+                ("logarithmic_params", cg.StructInitializer("", ("base", 10.0)))
+            )
+        elif curve_type == BrightnessCurveType.CUBIC:
+            profile = cg.StructInitializer(
+                BrightnessCurveProfile,
+                ("type", BrightnessCurveType.CUBIC),
+                ("cubic_params", cg.StructInitializer("", ("factor", 1.0)))
+            )
+        else:
+            profile = cg.StructInitializer(BrightnessCurveProfile)
+        
+        cg.add(light_var.set_brightness_curve(profile))
+        return
+    
+    # Handle detailed configuration object
+    curve_type = BRIGHTNESS_CURVE_TYPES[curve_config[CONF_CURVE_TYPE]]
+    
+    if curve_type == BrightnessCurveType.LINEAR:
+        profile = cg.StructInitializer(BrightnessCurveProfile)
+        
+    elif curve_type == BrightnessCurveType.GAMMA:
+        gamma = curve_config.get(CONF_CURVE_GAMMA, 2.8)
+        profile = cg.StructInitializer(
+            BrightnessCurveProfile,
+            ("type", BrightnessCurveType.GAMMA),
+            ("gamma_params", cg.StructInitializer("", ("gamma", gamma)))
+        )
+        
+    elif curve_type == BrightnessCurveType.EXPONENTIAL:
+        exponent = curve_config.get(CONF_CURVE_EXPONENT, 2.0)
+        profile = cg.StructInitializer(
+            BrightnessCurveProfile,
+            ("type", BrightnessCurveType.EXPONENTIAL),
+            ("exponential_params", cg.StructInitializer("", ("exponent", exponent)))
+        )
+        
+    elif curve_type == BrightnessCurveType.LOGARITHMIC:
+        base = curve_config.get(CONF_CURVE_BASE, 10.0)
+        profile = cg.StructInitializer(
+            BrightnessCurveProfile,
+            ("type", BrightnessCurveType.LOGARITHMIC),
+            ("logarithmic_params", cg.StructInitializer("", ("base", base)))
+        )
+        
+    elif curve_type == BrightnessCurveType.CUBIC:
+        factor = curve_config.get(CONF_CURVE_FACTOR, 1.0)
+        profile = cg.StructInitializer(
+            BrightnessCurveProfile,
+            ("type", BrightnessCurveType.CUBIC),
+            ("cubic_params", cg.StructInitializer("", ("factor", factor)))
+        )
+        
+    elif curve_type == BrightnessCurveType.CUSTOM:
+        points = curve_config.get(CONF_CURVE_POINTS, [])
+        # Create vector of BrightnessCurvePoint
+        point_vector = cg.std_vector.template(cg.esphome_ns.struct("BrightnessCurvePoint"))
+        points_var = cg.variable(cg.MockObjClass("", ""), point_vector, literal="")
+        
+        for point in points:
+            point_struct = cg.StructInitializer(
+                cg.esphome_ns.struct("BrightnessCurvePoint"),
+                ("input", point[0]),
+                ("output", point[1])
+            )
+            cg.add(points_var.push_back(point_struct))
+        
+        profile = cg.StructInitializer(
+            BrightnessCurveProfile,
+            ("type", BrightnessCurveType.CUSTOM),
+            ("custom_points", points_var)
+        )
+    else:
+        profile = cg.StructInitializer(BrightnessCurveProfile)
+    
+    cg.add(light_var.set_brightness_curve(profile))
 
 
 async def register_light(output_var, config):

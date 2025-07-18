@@ -35,6 +35,19 @@ LIMIT_MODES = {
     "DO_NOTHING": LimitMode.DO_NOTHING,
 }
 
+# Brightness curve profiles
+BrightnessCurveType = light_ns.enum("BrightnessCurveType", is_class=True)
+BRIGHTNESS_CURVE_TYPES = {
+    "LINEAR": BrightnessCurveType.LINEAR,
+    "GAMMA": BrightnessCurveType.GAMMA,
+    "EXPONENTIAL": BrightnessCurveType.EXPONENTIAL,
+    "LOGARITHMIC": BrightnessCurveType.LOGARITHMIC,
+    "CUBIC": BrightnessCurveType.CUBIC,
+    "CUSTOM": BrightnessCurveType.CUSTOM,
+}
+
+BrightnessCurveProfile = light_ns.struct("BrightnessCurveProfile")
+
 # Actions
 ToggleAction = light_ns.class_("ToggleAction", automation.Action)
 LightControlAction = light_ns.class_("LightControlAction", automation.Action)

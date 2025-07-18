@@ -7,6 +7,10 @@
 namespace esphome {
 namespace light {
 
+// Forward declaration for HSV conversion functions
+void rgb_to_hsv(float red, float green, float blue, int &hue, float &saturation, float &value);
+void hsv_to_rgb(int hue, float saturation, float value, float &red, float &green, float &blue);
+
 inline static uint8_t to_uint8_scale(float x) { return static_cast<uint8_t>(roundf(x * 255.0f)); }
 
 /** This class represents the color state for a light object.

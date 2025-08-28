@@ -131,6 +131,15 @@ class LightCall {
   /// Set whether this light call should trigger a save state to recover them at startup..
   LightCall &set_save(bool save);
 
+  /// Set the hue of the light from 0.0 to 360.0 degrees for RGB lights.
+  LightCall &set_hue(float hue);
+  /// Set the hue property if the light supports RGB.
+  LightCall &set_hue_if_supported(float hue);
+  /// Set the saturation of the light from 0.0 (no color) to 1.0 (fully saturated) for RGB lights.
+  LightCall &set_saturation(float saturation);
+  /// Set the saturation property if the light supports RGB.
+  LightCall &set_saturation_if_supported(float saturation);
+
   /** Set the RGB color of the light by RGB values.
    *
    * Please note that this only changes the color of the light, not the brightness.

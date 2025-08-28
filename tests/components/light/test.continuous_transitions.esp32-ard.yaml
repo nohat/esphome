@@ -1,0 +1,30 @@
+esphome:
+  name: test-continuous-transitions
+  friendly_name: Test Continuous Transitions
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+output:
+  - platform: ledc
+    pin: GPIO16
+    id: test_ledc_1
+  - platform: ledc
+    pin: GPIO17
+    id: test_ledc_2
+  - platform: ledc
+    pin: GPIO18
+    id: test_ledc_3
+  - platform: ledc
+    pin: GPIO19
+    id: test_ledc_4
+  - platform: ledc
+    pin: GPIO21
+    id: test_ledc_5
+  - platform: gpio
+    pin: GPIO22
+    id: test_binary
+
+<<: !include continuous_transitions_core.yaml

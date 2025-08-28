@@ -240,7 +240,8 @@ void LightState::stop_effect_() {
 
 void LightState::start_transition_(const LightColorValues &target, uint32_t length, bool set_remote_values) {
   this->transformer_ = this->output_->create_default_transition();
-  this->transformer_->setup(this->current_values, target, length);
+  auto *finite_transformer = static_cast<FiniteTransformer *>(this->transformer_.get());
+  finite_transformer->setup(this->current_values, target, length);
 
   if (set_remote_values) {
     this->remote_values = target;
@@ -255,7 +256,8 @@ void LightState::start_flash_(const LightColorValues &target, uint32_t length, b
     end_colors = this->transformer_->get_start_values();
 
   this->transformer_ = make_unique<LightFlashTransformer>(*this);
-  this->transformer_->setup(end_colors, target, length);
+  auto *finite_transformer = static_cast<FiniteTransformer *>(this->transformer_.get());
+  finite_transformer->setup(end_colors, target, length);
 
   if (set_remote_values) {
     this->remote_values = target;
@@ -300,47 +302,53 @@ void LightState::save_remote_values_() {
 
 void LightState::start_continuous_brightness(TransitionDirection direction, float speed) {
   // Create a ColorTransitionTransformer and set it as the active transformer
-  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_BRIGHTNESS, direction, speed);
+  this->transformer_ = make_unique<ColorTransitionTransformer>(COLOR_TRANSITION_BRIGHTNESS, direction, speed);
   // Use the continuous setup method
-  this->transformer_->setup(this->current_values);
+  auto *continuous_transformer = static_cast<ContinuousTransformer *>(this->transformer_.get());
+  continuous_transformer->setup(this->current_values);
   this->is_transformer_active_ = true;
 }
 
 void LightState::start_continuous_color_temperature(TransitionDirection direction, float speed) {
-  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_COLOR_TEMPERATURE, direction, speed);
-  this->transformer_->setup(this->current_values);
+  this->transformer_ = make_unique<ColorTransitionTransformer>(COLOR_TRANSITION_COLOR_TEMPERATURE, direction, speed);
+  auto *continuous_transformer = static_cast<ContinuousTransformer *>(this->transformer_.get());
+  continuous_transformer->setup(this->current_values);
   this->is_transformer_active_ = true;
 }
 
 void LightState::start_continuous_hue(TransitionDirection direction, float speed) {
-  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_HUE, direction, speed);
-  this->transformer_->setup(this->current_values);
+  this->transformer_ = make_unique<ColorTransitionTransformer>(COLOR_TRANSITION_HUE, direction, speed);
+  auto *continuous_transformer = static_cast<ContinuousTransformer *>(this->transformer_.get());
+  continuous_transformer->setup(this->current_values);
   this->is_transformer_active_ = true;
 }
 
 void LightState::start_continuous_saturation(TransitionDirection direction, float speed) {
-  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_SATURATION, direction, speed);
-  this->transformer_->setup(this->current_values);
+  this->transformer_ = make_unique<ColorTransitionTransformer>(COLOR_TRANSITION_SATURATION, direction, speed);
+  auto *continuous_transformer = static_cast<ContinuousTransformer *>(this->transformer_.get());
+  continuous_transformer->setup(this->current_values);
   this->is_transformer_active_ = true;
 }
 
 void LightState::start_continuous_cie_x(TransitionDirection direction, float speed) {
-  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_CIE_X, direction, speed);
-  this->transformer_->setup(this->current_values);
+  this->transformer_ = make_unique<ColorTransitionTransformer>(COLOR_TRANSITION_CIE_X, direction, speed);
+  auto *continuous_transformer = static_cast<ContinuousTransformer *>(this->transformer_.get());
+  continuous_transformer->setup(this->current_values);
   this->is_transformer_active_ = true;
 }
 
 void LightState::start_continuous_cie_y(TransitionDirection direction, float speed) {
-  this->transformer_ = make_unique<ColorTransitionTransformer>(CONTINUOUS_CIE_Y, direction, speed);
-  this->transformer_->setup(this->current_values);
+  this->transformer_ = make_unique<ColorTransitionTransformer>(COLOR_TRANSITION_CIE_Y, direction, speed);
+  auto *continuous_transformer = static_cast<ContinuousTransformer *>(this->transformer_.get());
+  continuous_transformer->setup(this->current_values);
   this->is_transformer_active_ = true;
 }
 
 /// Unified continuous transition method
-void LightState::start_continuous_transition(ContinuousTransitionType type, TransitionDirection direction,
-                                             float speed) {
+void LightState::start_continuous_transition(ColorTransitionType type, TransitionDirection direction, float speed) {
   this->transformer_ = make_unique<ColorTransitionTransformer>(type, direction, speed);
-  this->transformer_->setup(this->current_values);
+  auto *continuous_transformer = static_cast<ContinuousTransformer *>(this->transformer_.get());
+  continuous_transformer->setup(this->current_values);
   this->is_transformer_active_ = true;
 }
 

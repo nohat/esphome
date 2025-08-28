@@ -4,6 +4,7 @@
 #include "light_transition_transformer.h"
 #include "light_flash_transformer.h"
 #include "color_transition_transformer.h"
+#include "light_color_values.h"
 
 namespace esphome {
 namespace light {

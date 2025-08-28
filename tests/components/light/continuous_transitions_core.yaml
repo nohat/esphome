@@ -1,0 +1,42 @@
+esphome:
+  on_boot:
+    then:
+      # Test continuous transitions API compilation
+      - lambda: |-
+          // Test continuous brightness transitions
+          id(test_rgb_light).start_continuous_brightness(esphome::light::TRANSITION_DIRECTION_UP, 0.2f);
+          id(test_rgb_light).stop_continuous_transition();
+
+          // Test continuous color temperature transitions
+          id(test_cwww_light).start_continuous_color_temperature(esphome::light::TRANSITION_DIRECTION_DOWN, 30.0f);
+          id(test_cwww_light).stop_continuous_transition();
+
+          // Test continuous hue transitions
+          id(test_rgb_light).start_continuous_hue(esphome::light::TRANSITION_DIRECTION_UP, 60.0f);
+          id(test_rgb_light).stop_continuous_transition();
+
+          // Test continuous saturation transitions
+          id(test_rgb_light).start_continuous_saturation(esphome::light::TRANSITION_DIRECTION_DOWN, 0.3f);
+          id(test_rgb_light).stop_continuous_transition();
+
+          // Test HSV methods on LightCall
+          auto call = id(test_rgb_light).turn_on();
+          call.set_hue(180.0f);
+          call.set_saturation(0.8f);
+          call.set_brightness(0.6f);
+          call.perform();
+
+light:
+  - platform: rgb
+    id: test_rgb_light
+    name: RGB Light Continuous Test
+    red: test_ledc_1
+    green: test_ledc_2
+    blue: test_ledc_3
+  - platform: cwww
+    id: test_cwww_light
+    name: CWWW Light Continuous Test
+    cold_white: test_ledc_4
+    warm_white: test_ledc_5
+    cold_white_color_temperature: 153 mireds
+    warm_white_color_temperature: 500 mireds

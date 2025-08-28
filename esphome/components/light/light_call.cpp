@@ -685,6 +685,38 @@ LightCall &LightCall::set_rgbw(float red, float green, float blue, float white) 
   this->set_white(white);
   return *this;
 }
+LightCall &LightCall::set_hue(float hue) {
+  // Get current RGB values to preserve saturation and value
+  LightColorValues current = this->parent_->remote_values;
+  current.set_hue(hue);
+
+  // Update RGB values based on new hue
+  float r, g, b;
+  current.as_rgb(&r, &g, &b);
+  this->set_rgb(r, g, b);
+  return *this;
+}
+LightCall &LightCall::set_hue_if_supported(float hue) {
+  if (this->get_active_color_mode_() & ColorCapability::RGB)
+    this->set_hue(hue);
+  return *this;
+}
+LightCall &LightCall::set_saturation(float saturation) {
+  // Get current RGB values to preserve hue and value
+  LightColorValues current = this->parent_->remote_values;
+  current.set_saturation(saturation);
+
+  // Update RGB values based on new saturation
+  float r, g, b;
+  current.as_rgb(&r, &g, &b);
+  this->set_rgb(r, g, b);
+  return *this;
+}
+LightCall &LightCall::set_saturation_if_supported(float saturation) {
+  if (this->get_active_color_mode_() & ColorCapability::RGB)
+    this->set_saturation(saturation);
+  return *this;
+}
 
 }  // namespace light
 }  // namespace esphome

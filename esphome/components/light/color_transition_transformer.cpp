@@ -4,14 +4,13 @@
 namespace esphome {
 namespace light {
 
-ColorTransitionTransformer::ColorTransitionTransformer(ContinuousTransitionType type, TransitionDirection direction,
+ColorTransitionTransformer::ColorTransitionTransformer(ColorTransitionType type, TransitionDirection direction,
                                                        float speed)
     : type_(type), direction_(direction), speed_(speed) {}
 
 void ColorTransitionTransformer::start() {
   // Store the initial value for the transition type
-  ColorTransitionType color_type = static_cast<ColorTransitionType>(this->type_);
-  this->initial_value_ = this->start_values_.get_transition_value(color_type);
+  this->initial_value_ = this->start_values_.get_transition_value(this->type_);
 }
 
 optional<LightColorValues> ColorTransitionTransformer::apply() {
@@ -26,22 +25,22 @@ optional<LightColorValues> ColorTransitionTransformer::apply() {
   auto new_values = this->start_values_;
 
   switch (this->type_) {
-    case CONTINUOUS_BRIGHTNESS:
+    case COLOR_TRANSITION_BRIGHTNESS:
       new_values.update_brightness(delta);
       break;
-    case CONTINUOUS_COLOR_TEMPERATURE:
+    case COLOR_TRANSITION_COLOR_TEMPERATURE:
       new_values.update_color_temperature(delta);
       break;
-    case CONTINUOUS_HUE:
+    case COLOR_TRANSITION_HUE:
       new_values.update_hue(delta, this->hue_path_);
       break;
-    case CONTINUOUS_SATURATION:
+    case COLOR_TRANSITION_SATURATION:
       new_values.update_saturation(delta);
       break;
-    case CONTINUOUS_CIE_X:
+    case COLOR_TRANSITION_CIE_X:
       new_values.update_cie_x(delta);
       break;
-    case CONTINUOUS_CIE_Y:
+    case COLOR_TRANSITION_CIE_Y:
       new_values.update_cie_y(delta);
       break;
     default:

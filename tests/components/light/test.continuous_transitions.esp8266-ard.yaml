@@ -1,0 +1,31 @@
+esphome:
+  name: test-continuous-esp8266
+  friendly_name: Test Continuous ESP8266
+
+esp8266:
+  board: esp01_1m
+
+substitutions:
+  output_platform: esp8266_pwm
+
+output:
+  - platform: esp8266_pwm
+    pin: GPIO4
+    id: test_ledc_1
+  - platform: esp8266_pwm
+    pin: GPIO5
+    id: test_ledc_2
+  - platform: esp8266_pwm
+    pin: GPIO12
+    id: test_ledc_3
+  - platform: esp8266_pwm
+    pin: GPIO13
+    id: test_ledc_4
+  - platform: esp8266_pwm
+    pin: GPIO14
+    id: test_ledc_5
+  - platform: gpio
+    pin: GPIO16
+    id: test_binary
+
+<<: !include continuous_transitions_core.yaml

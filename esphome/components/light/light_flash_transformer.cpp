@@ -1,5 +1,7 @@
 #include "light_flash_transformer.h"
 #include "light_state.h"
+#include "light_output.h"
+#include "light_transformer.h"
 
 namespace esphome {
 namespace light {
@@ -13,7 +15,8 @@ void LightFlashTransformer::start() {
 
   // first transition to original target
   this->transformer_ = this->state_.get_output()->create_default_transition();
-  this->transformer_->setup(this->state_.current_values, this->target_values_, this->transition_length_);
+  auto *finite_transformer = static_cast<FiniteTransformer *>(this->transformer_.get());
+  finite_transformer->setup(this->state_.current_values, this->target_values_, this->transition_length_);
 }
 
 optional<LightColorValues> LightFlashTransformer::apply() {
@@ -22,7 +25,8 @@ optional<LightColorValues> LightFlashTransformer::apply() {
   if (this->transformer_ == nullptr && millis() > this->start_time_ + this->length_ - this->transition_length_) {
     // second transition back to start value
     this->transformer_ = this->state_.get_output()->create_default_transition();
-    this->transformer_->setup(this->state_.current_values, this->get_start_values(), this->transition_length_);
+    auto *finite_transformer = static_cast<FiniteTransformer *>(this->transformer_.get());
+    finite_transformer->setup(this->state_.current_values, this->get_start_values(), this->transition_length_);
     this->begun_lightstate_restore_ = true;
   }
 
@@ -49,7 +53,9 @@ void LightFlashTransformer::stop() {
   this->state_.publish_state();
 }
 
-bool LightFlashTransformer::is_finished() { return this->begun_lightstate_restore_ && LightTransformer::is_finished(); }
+bool LightFlashTransformer::is_finished() {
+  return this->begun_lightstate_restore_ && FiniteTransformer::is_finished();
+}
 
 }  // namespace light
 }  // namespace esphome

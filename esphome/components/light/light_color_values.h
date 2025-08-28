@@ -33,6 +33,17 @@ enum HueTransitionPath : uint8_t {
   HUE_PATH_COUNTER_CLOCKWISE,  ///< Force counter-clockwise direction
 };
 
+/// Continuous transition types (for backwards compatibility and clearer API)
+enum ContinuousTransitionType : uint8_t {
+  CONTINUOUS_NONE = 0,
+  CONTINUOUS_BRIGHTNESS = COLOR_TRANSITION_BRIGHTNESS,
+  CONTINUOUS_COLOR_TEMPERATURE = COLOR_TRANSITION_COLOR_TEMPERATURE,
+  CONTINUOUS_HUE = COLOR_TRANSITION_HUE,
+  CONTINUOUS_SATURATION = COLOR_TRANSITION_SATURATION,
+  CONTINUOUS_CIE_X = COLOR_TRANSITION_CIE_X,
+  CONTINUOUS_CIE_Y = COLOR_TRANSITION_CIE_Y,
+};
+
 /** This class represents the color state for a light object.
  *
  * The representation of the color state is dependent on the active color mode. A color mode consists of multiple
@@ -314,6 +325,30 @@ class LightColorValues {
   float get_warm_white() const { return this->warm_white_; }
   /// Set the warm white property of these light color values. In range 0.0 to 1.0.
   void set_warm_white(float warm_white) { this->warm_white_ = clamp(warm_white, 0.0f, 1.0f); }
+
+  // ========== HSV SUPPORT METHODS ==========
+
+  /// Get the hue property of these light color values. In range 0.0 to 360.0
+  float get_hue() const;
+  /// Set the hue property of these light color values. In range 0.0 to 360.0
+  void set_hue(float hue);
+
+  /// Get the saturation property of these light color values. In range 0.0 to 1.0
+  float get_saturation() const;
+  /// Set the saturation property of these light color values. In range 0.0 to 1.0
+  void set_saturation(float saturation);
+
+  /// Set RGB values from HSV
+  void set_rgb(float red, float green, float blue) {
+    this->set_red(red);
+    this->set_green(green);
+    this->set_blue(blue);
+  }
+
+  /// Get CIE XY coordinates
+  void as_cie_xy(float *x, float *y) const;
+  /// Set CIE XY coordinates
+  void set_cie_xy(float x, float y);
 
   // ========== COLOR TRANSITION UTILITIES ==========
 

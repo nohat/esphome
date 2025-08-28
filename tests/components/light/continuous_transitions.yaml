@@ -1,0 +1,123 @@
+esphome:
+  on_boot:
+    then:
+      # Test continuous transitions API compilation
+      - lambda: |-
+          // Test continuous brightness transitions
+          id(test_rgb_light).start_continuous_brightness(esphome::light::TRANSITION_DIRECTION_UP, 0.2f);
+          id(test_rgb_light).stop_continuous_transition();
+
+          // Test continuous color temperature transitions
+          id(test_cwww_light).start_continuous_color_temperature(esphome::light::TRANSITION_DIRECTION_DOWN, 30.0f);
+          id(test_cwww_light).stop_continuous_transition();
+
+          // Test continuous hue transitions
+          id(test_rgb_light).start_continuous_hue(esphome::light::TRANSITION_DIRECTION_UP, 60.0f);
+          id(test_rgb_light).stop_continuous_transition();
+
+          // Test continuous saturation transitions
+          id(test_rgb_light).start_continuous_saturation(esphome::light::TRANSITION_DIRECTION_DOWN, 0.3f);
+          id(test_rgb_light).stop_continuous_transition();
+
+          // Test HSV methods on LightCall
+          auto call = id(test_rgb_light).turn_on();
+          call.set_hue(180.0f);
+          call.set_saturation(0.8f);
+          call.set_brightness(0.6f);
+          call.perform();
+
+light:
+  - platform: rgb
+    id: test_rgb_light
+    name: RGB Light Continuous Test
+    red: test_ledc_1
+    green: test_ledc_2
+    blue: test_ledc_3
+  - platform: cwww
+    id: test_cwww_light
+    name: CWWW Light Continuous Test
+    cold_white: test_ledc_4
+    warm_white: test_ledc_5
+    cold_white_color_temperature: 153 mireds
+    warm_white_color_temperature: 500 mireds
+
+api:
+  services:
+    # Test service definitions for continuous transitions
+    - service: test_continuous_brightness_up
+      variables:
+        speed: float
+      then:
+        - lambda: |-
+            id(test_rgb_light).start_continuous_brightness(esphome::light::TRANSITION_DIRECTION_UP, speed);
+
+    - service: test_continuous_brightness_down
+      variables:
+        speed: float
+      then:
+        - lambda: |-
+            id(test_rgb_light).start_continuous_brightness(esphome::light::TRANSITION_DIRECTION_DOWN, speed);
+
+    - service: test_continuous_color_temp_up
+      variables:
+        speed: float
+      then:
+        - lambda: |-
+            id(test_cwww_light).start_continuous_color_temperature(esphome::light::TRANSITION_DIRECTION_UP, speed);
+
+    - service: test_continuous_hue_rotation
+      variables:
+        speed: float
+      then:
+        - lambda: |-
+            id(test_rgb_light).start_continuous_hue(esphome::light::TRANSITION_DIRECTION_UP, speed);
+
+    - service: test_continuous_saturation_up
+      variables:
+        speed: float
+      then:
+        - lambda: |-
+            id(test_rgb_light).start_continuous_saturation(esphome::light::TRANSITION_DIRECTION_UP, speed);
+
+    - service: test_continuous_saturation_down
+      variables:
+        speed: float
+      then:
+        - lambda: |-
+            id(test_rgb_light).start_continuous_saturation(esphome::light::TRANSITION_DIRECTION_DOWN, speed);
+
+    - service: stop_all_continuous_transitions
+      then:
+        - lambda: |-
+            id(test_rgb_light).stop_continuous_transition();
+            id(test_cwww_light).stop_continuous_transition();
+
+    - service: test_hsv_control
+      variables:
+        hue: float
+        saturation: float
+        brightness: float
+      then:
+        - lambda: |-
+            auto call = id(test_rgb_light).turn_on();
+            call.set_hue(hue);
+            call.set_saturation(saturation);
+            call.set_brightness(brightness);
+            call.perform();
+
+    - service: test_cie_xy_control
+      variables:
+        x: float
+        y: float
+        brightness: float
+      then:
+        - lambda: |-
+            // Test CIE XY color space support
+            esphome::light::LightColorValues values;
+            values.set_cie_xy(x, y);
+            values.set_brightness(brightness);
+
+            auto call = id(test_rgb_light).turn_on();
+            call.set_rgb(values.get_red(), values.get_green(), values.get_blue());
+            call.set_brightness(brightness);
+            call.perform();

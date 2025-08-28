@@ -187,5 +187,174 @@ LightColorValues LightColorValues::lerp_with_hue_path(const LightColorValues &st
   return result;
 }
 
+// ========== HSV METHODS IMPLEMENTATION ==========
+
+float LightColorValues::get_hue() const {
+  // Convert RGB to HSV and return hue
+  float r = this->get_red();
+  float g = this->get_green();
+  float b = this->get_blue();
+
+  float max_val = std::max({r, g, b});
+  float min_val = std::min({r, g, b});
+  float delta = max_val - min_val;
+
+  if (delta == 0)
+    return 0.0f;  // No hue when saturation is 0
+
+  float hue;
+  if (max_val == r) {
+    hue = 60.0f * fmod((g - b) / delta + 6.0f, 6.0f);
+  } else if (max_val == g) {
+    hue = 60.0f * ((b - r) / delta + 2.0f);
+  } else {
+    hue = 60.0f * ((r - g) / delta + 4.0f);
+  }
+
+  return hue;
+}
+
+void LightColorValues::set_hue(float hue) {
+  // Get current saturation and value
+  float saturation = this->get_saturation();
+  float value = std::max({this->get_red(), this->get_green(), this->get_blue()});
+
+  // Convert HSV to RGB
+  hue = wrap_hue(hue);  // Ensure hue is in 0-360 range
+
+  float c = value * saturation;
+  float x = c * (1.0f - std::abs(fmod(hue / 60.0f, 2.0f) - 1.0f));
+  float m = value - c;
+
+  float r, g, b;
+  if (hue >= 0 && hue < 60) {
+    r = c;
+    g = x;
+    b = 0;
+  } else if (hue >= 60 && hue < 120) {
+    r = x;
+    g = c;
+    b = 0;
+  } else if (hue >= 120 && hue < 180) {
+    r = 0;
+    g = c;
+    b = x;
+  } else if (hue >= 180 && hue < 240) {
+    r = 0;
+    g = x;
+    b = c;
+  } else if (hue >= 240 && hue < 300) {
+    r = x;
+    g = 0;
+    b = c;
+  } else {
+    r = c;
+    g = 0;
+    b = x;
+  }
+
+  this->set_red(r + m);
+  this->set_green(g + m);
+  this->set_blue(b + m);
+}
+
+float LightColorValues::get_saturation() const {
+  // Convert RGB to HSV and return saturation
+  float r = this->get_red();
+  float g = this->get_green();
+  float b = this->get_blue();
+
+  float max_val = std::max({r, g, b});
+  float min_val = std::min({r, g, b});
+
+  if (max_val == 0)
+    return 0.0f;  // No saturation when value is 0
+
+  return (max_val - min_val) / max_val;
+}
+
+void LightColorValues::set_saturation(float saturation) {
+  // Get current hue and value
+  float hue = this->get_hue();
+  float value = std::max({this->get_red(), this->get_green(), this->get_blue()});
+
+  // Convert HSV to RGB
+  saturation = clamp(saturation, 0.0f, 1.0f);
+
+  float c = value * saturation;
+  float x = c * (1.0f - std::abs(fmod(hue / 60.0f, 2.0f) - 1.0f));
+  float m = value - c;
+
+  float r, g, b;
+  if (hue >= 0 && hue < 60) {
+    r = c;
+    g = x;
+    b = 0;
+  } else if (hue >= 60 && hue < 120) {
+    r = x;
+    g = c;
+    b = 0;
+  } else if (hue >= 120 && hue < 180) {
+    r = 0;
+    g = c;
+    b = x;
+  } else if (hue >= 180 && hue < 240) {
+    r = 0;
+    g = x;
+    b = c;
+  } else if (hue >= 240 && hue < 300) {
+    r = x;
+    g = 0;
+    b = c;
+  } else {
+    r = c;
+    g = 0;
+    b = x;
+  }
+
+  this->set_red(r + m);
+  this->set_green(g + m);
+  this->set_blue(b + m);
+}
+
+void LightColorValues::as_cie_xy(float *x, float *y) const {
+  // Simple RGB to CIE XY conversion (basic implementation)
+  float r = this->get_red();
+  float g = this->get_green();
+  float b = this->get_blue();
+
+  // Convert to XYZ color space (simplified sRGB conversion)
+  float X = r * 0.4124564f + g * 0.3575761f + b * 0.1804375f;
+  float Y = r * 0.2126729f + g * 0.7151522f + b * 0.0721750f;
+  float Z = r * 0.0193339f + g * 0.1191920f + b * 0.9503041f;
+
+  float sum = X + Y + Z;
+  if (sum == 0) {
+    *x = 0.3127f;  // Default to white point
+    *y = 0.3290f;
+  } else {
+    *x = X / sum;
+    *y = Y / sum;
+  }
+}
+
+void LightColorValues::set_cie_xy(float x, float y) {
+  // Simple CIE XY to RGB conversion (basic implementation)
+  // Use Y = 1 for maximum brightness
+  float Y = 1.0f;
+  float X = (Y / y) * x;
+  float Z = (Y / y) * (1.0f - x - y);
+
+  // Convert XYZ to RGB (simplified sRGB conversion)
+  float r = X * 3.2404542f + Y * -1.5371385f + Z * -0.4985314f;
+  float g = X * -0.9692660f + Y * 1.8760108f + Z * 0.0415560f;
+  float b = X * 0.0556434f + Y * -0.2040259f + Z * 1.0572252f;
+
+  // Clamp and set RGB values
+  this->set_red(clamp(r, 0.0f, 1.0f));
+  this->set_green(clamp(g, 0.0f, 1.0f));
+  this->set_blue(clamp(b, 0.0f, 1.0f));
+}
+
 }  // namespace light
 }  // namespace esphome

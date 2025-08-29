@@ -1,0 +1,65 @@
+substitutions:
+  name: athom-rgbww-light-bulb
+  friendly_name: Athom RGBWW Light Bulb
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
+
+esp8266:
+  board: esp8285
+  restore_from_flash: true
+
+preferences:
+  flash_write_interval: 1min
+
+logger:
+
+api:
+
+ota:
+
+wifi:
+  ap:
+
+captive_portal:
+
+web_server:
+  port: 80
+
+button:
+  - platform: factory_reset
+    name: Restart with Factory Default Settings
+
+light:
+  - platform: rgbww
+    name: None
+    id: athom_light
+    red: PWM0
+    green: PWM1
+    blue: PWM2
+    cold_white: PWM3
+    warm_white: PWM4
+    cold_white_color_temperature: 6536 K
+    warm_white_color_temperature: 2000 K
+    color_interlock: true
+    # Enable gamma correction for better color accuracy
+    gamma_correct: 2.8
+
+output:
+  - platform: esp8266_pwm
+    id: PWM0
+    pin: GPIO4
+  - platform: esp8266_pwm
+    id: PWM1
+    pin: GPIO12
+  - platform: esp8266_pwm
+    id: PWM2
+    pin: GPIO14
+  - platform: esp8266_pwm
+    id: PWM3
+    pin: GPIO5
+  - platform: esp8266_pwm
+    id: PWM4
+    pin: GPIO13

@@ -57,6 +57,10 @@ void LightJSONSchema::dump_json(LightState &state, JsonObject root) {
     color["r"] = uint8_t(values.get_color_brightness() * values.get_red() * 255);
     color["g"] = uint8_t(values.get_color_brightness() * values.get_green() * 255);
     color["b"] = uint8_t(values.get_color_brightness() * values.get_blue() * 255);
+
+    // Color Control Cluster extensions - add HSV values
+    root["hue"] = values.get_hue();
+    root["saturation"] = uint8_t(values.get_saturation() * 100);  // Convert to percentage
   }
   if (values.get_color_mode() & ColorCapability::WHITE) {
     color["w"] = uint8_t(values.get_white() * 255);
@@ -70,6 +74,9 @@ void LightJSONSchema::dump_json(LightState &state, JsonObject root) {
     color["c"] = uint8_t(values.get_cold_white() * 255);
     color["w"] = uint8_t(values.get_warm_white() * 255);
   }
+
+  // Color Control Cluster extensions - add transition state
+  root["transition_active"] = state.is_transformer_active();
 }
 
 void LightJSONSchema::parse_color_json(LightState &state, LightCall &call, JsonObject root) {
@@ -137,6 +144,14 @@ void LightJSONSchema::parse_color_json(LightState &state, LightCall &call, JsonO
 
   if (root.containsKey("color_temp")) {
     call.set_color_temperature(float(root["color_temp"]));
+  }
+
+  // Color Control Cluster extensions - parse HSV values
+  if (root.containsKey("hue")) {
+    call.set_hue(float(root["hue"]));
+  }
+  if (root.containsKey("saturation")) {
+    call.set_saturation(float(root["saturation"]) / 100.0f);  // Convert percentage to 0-1
   }
 }
 

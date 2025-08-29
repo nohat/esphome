@@ -783,6 +783,65 @@ void WebServer::handle_light_request(AsyncWebServerRequest *request, const UrlMa
         call.set_effect(effect);
       }
 
+      // Color Control Cluster extensions - direct hue/saturation
+      if (request->hasParam("hue")) {
+        auto hue = parse_number<float>(request->getParam("hue")->value().c_str());
+        if (hue.has_value()) {
+          call.set_hue(*hue);
+        }
+      }
+      if (request->hasParam("saturation")) {
+        auto saturation = parse_number<float>(request->getParam("saturation")->value().c_str());
+        if (saturation.has_value()) {
+          call.set_saturation(*saturation / 100.0f);  // Convert percentage to 0-1 range
+        }
+      }
+
+      // Color Control Cluster extensions - continuous transitions (move)
+      if (request->hasParam("brightness_move_direction") && request->hasParam("brightness_move_speed")) {
+        std::string direction_str = request->getParam("brightness_move_direction")->value().c_str();
+        auto speed = parse_number<float>(request->getParam("brightness_move_speed")->value().c_str());
+        if (speed.has_value()) {
+          light::TransitionDirection direction = (direction_str == "up" || direction_str == "UP")
+                                                     ? light::TransitionDirection::TRANSITION_DIRECTION_UP
+                                                     : light::TransitionDirection::TRANSITION_DIRECTION_DOWN;
+          call.set_brightness_move(direction, *speed);
+        }
+      }
+
+      if (request->hasParam("hue_move_direction") && request->hasParam("hue_move_speed")) {
+        std::string direction_str = request->getParam("hue_move_direction")->value().c_str();
+        auto speed = parse_number<float>(request->getParam("hue_move_speed")->value().c_str());
+        if (speed.has_value()) {
+          light::TransitionDirection direction = (direction_str == "up" || direction_str == "UP")
+                                                     ? light::TransitionDirection::TRANSITION_DIRECTION_UP
+                                                     : light::TransitionDirection::TRANSITION_DIRECTION_DOWN;
+          call.set_hue_move(direction, *speed);
+        }
+      }
+
+      if (request->hasParam("saturation_move_direction") && request->hasParam("saturation_move_speed")) {
+        std::string direction_str = request->getParam("saturation_move_direction")->value().c_str();
+        auto speed = parse_number<float>(request->getParam("saturation_move_speed")->value().c_str());
+        if (speed.has_value()) {
+          light::TransitionDirection direction = (direction_str == "up" || direction_str == "UP")
+                                                     ? light::TransitionDirection::TRANSITION_DIRECTION_UP
+                                                     : light::TransitionDirection::TRANSITION_DIRECTION_DOWN;
+          call.set_saturation_move(direction, *speed);
+        }
+      }
+
+      if (request->hasParam("color_temp_move_direction") && request->hasParam("color_temp_move_speed")) {
+        std::string direction_str = request->getParam("color_temp_move_direction")->value().c_str();
+        auto speed = parse_number<float>(request->getParam("color_temp_move_speed")->value().c_str());
+        if (speed.has_value()) {
+          light::TransitionDirection direction = (direction_str == "up" || direction_str == "UP")
+                                                     ? light::TransitionDirection::TRANSITION_DIRECTION_UP
+                                                     : light::TransitionDirection::TRANSITION_DIRECTION_DOWN;
+          call.set_color_temperature_move(direction, *speed);
+        }
+      }
+
       this->schedule_([call]() mutable { call.perform(); });
       request->send(200);
     } else if (match.method_equals("turn_off")) {
@@ -793,6 +852,128 @@ void WebServer::handle_light_request(AsyncWebServerRequest *request, const UrlMa
           call.set_transition_length(*transition * 1000);
         }
       }
+      this->schedule_([call]() mutable { call.perform(); });
+      request->send(200);
+    } else if (match.method_equals("move")) {
+      // Dynamic control move endpoint - start continuous transitions
+      auto call = obj->make_call();
+
+      if (request->hasParam("parameter") && request->hasParam("direction") && request->hasParam("speed")) {
+        std::string parameter = request->getParam("parameter")->value().c_str();
+        std::string direction_str = request->getParam("direction")->value().c_str();
+        auto speed = parse_number<float>(request->getParam("speed")->value().c_str());
+
+        if (speed.has_value()) {
+          light::TransitionDirection direction = (direction_str == "up" || direction_str == "UP")
+                                                     ? light::TransitionDirection::TRANSITION_DIRECTION_UP
+                                                     : light::TransitionDirection::TRANSITION_DIRECTION_DOWN;
+
+          if (parameter == "brightness") {
+            call.set_brightness_move(direction, *speed);
+          } else if (parameter == "hue") {
+            call.set_hue_move(direction, *speed);
+          } else if (parameter == "saturation") {
+            call.set_saturation_move(direction, *speed);
+          } else if (parameter == "color_temp" || parameter == "color_temperature") {
+            call.set_color_temperature_move(direction, *speed);
+          } else {
+            request->send(400);  // Bad request - invalid parameter
+            return;
+          }
+
+          this->schedule_([call]() mutable { call.perform(); });
+          request->send(200);
+        } else {
+          request->send(400);  // Bad request - invalid speed
+        }
+      } else {
+        request->send(400);  // Bad request - missing parameters
+      }
+    } else if (match.method_equals("step")) {
+      // Dynamic control step endpoint - perform step transitions
+      auto call = obj->make_call();
+
+      if (request->hasParam("parameter") && request->hasParam("direction") && request->hasParam("step_size")) {
+        std::string parameter = request->getParam("parameter")->value().c_str();
+        std::string direction_str = request->getParam("direction")->value().c_str();
+        auto step_size = parse_number<float>(request->getParam("step_size")->value().c_str());
+        uint32_t transition_time = 0;
+
+        if (request->hasParam("transition_time")) {
+          auto transition = parse_number<uint32_t>(request->getParam("transition_time")->value().c_str());
+          if (transition.has_value()) {
+            transition_time = *transition;
+          }
+        }
+
+        if (step_size.has_value()) {
+          light::TransitionDirection direction = (direction_str == "up" || direction_str == "UP")
+                                                     ? light::TransitionDirection::TRANSITION_DIRECTION_UP
+                                                     : light::TransitionDirection::TRANSITION_DIRECTION_DOWN;
+
+          if (parameter == "brightness") {
+            call.set_brightness_step(direction, *step_size, transition_time);
+          } else if (parameter == "hue") {
+            call.set_hue_step(direction, *step_size, transition_time);
+          } else if (parameter == "saturation") {
+            call.set_saturation_step(direction, *step_size, transition_time);
+          } else if (parameter == "color_temp" || parameter == "color_temperature") {
+            call.set_color_temperature_step(direction, *step_size, transition_time);
+          } else {
+            request->send(400);  // Bad request - invalid parameter
+            return;
+          }
+
+          this->schedule_([call]() mutable { call.perform(); });
+          request->send(200);
+        } else {
+          request->send(400);  // Bad request - invalid step_size
+        }
+      } else {
+        request->send(400);  // Bad request - missing parameters
+      }
+    } else if (match.method_equals("move_to_level")) {
+      // Dynamic control move_to_level endpoint - move to specific levels
+      auto call = obj->make_call();
+
+      if (request->hasParam("parameter") && request->hasParam("target")) {
+        std::string parameter = request->getParam("parameter")->value().c_str();
+        auto target = parse_number<float>(request->getParam("target")->value().c_str());
+        uint32_t transition_time = 0;
+
+        if (request->hasParam("transition_time")) {
+          auto transition = parse_number<uint32_t>(request->getParam("transition_time")->value().c_str());
+          if (transition.has_value()) {
+            transition_time = *transition;
+          }
+        }
+
+        if (target.has_value()) {
+          if (parameter == "brightness") {
+            call.set_brightness_move_to_level(*target / 100.0f, transition_time);  // Convert percentage
+          } else if (parameter == "hue") {
+            call.set_hue_move_to_level(*target, transition_time);
+          } else if (parameter == "saturation") {
+            call.set_saturation_move_to_level(*target / 100.0f, transition_time);  // Convert percentage
+          } else if (parameter == "color_temp" || parameter == "color_temperature") {
+            call.set_color_temperature_move_to_level(*target, transition_time);
+          } else {
+            request->send(400);  // Bad request - invalid parameter
+            return;
+          }
+
+          this->schedule_([call]() mutable { call.perform(); });
+          request->send(200);
+        } else {
+          request->send(400);  // Bad request - invalid target
+        }
+      } else {
+        request->send(400);  // Bad request - missing parameters
+      }
+    } else if (match.method_equals("stop")) {
+      // Stop any continuous transitions
+      auto call = obj->make_call();
+      call.set_brightness_stop();
       this->schedule_([call]() mutable { call.perform(); });
       request->send(200);
     } else {

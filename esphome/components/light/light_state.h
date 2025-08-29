@@ -142,6 +142,10 @@ class LightState : public EntityBase, public Component {
   void set_gamma_correct(float gamma_correct);
   float get_gamma_correct() const { return this->gamma_correct_; }
 
+  /// Set the state publish interval during continuous transitions (ms, 0 = disabled)
+  void set_continuous_state_publish_interval(uint32_t interval_ms);
+  uint32_t get_continuous_state_publish_interval() const { return this->continuous_state_publish_interval_; }
+
   /// Set the restore mode of this light
   void set_restore_mode(LightRestoreMode restore_mode);
 
@@ -252,6 +256,11 @@ class LightState : public EntityBase, public Component {
   bool next_write_{true};
   // for effects, true if a transformer (transition) is active.
   bool is_transformer_active_ = false;
+
+  /// Interval for publishing state during continuous transitions (ms, 0 = disabled)
+  uint32_t continuous_state_publish_interval_{0};
+  /// Last time state was published during continuous transition
+  uint32_t last_continuous_publish_{0};
 
   /// Object used to store the persisted values of the light.
   ESPPreferenceObject rtc_;

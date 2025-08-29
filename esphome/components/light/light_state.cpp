@@ -120,11 +120,28 @@ void LightState::loop() {
       this->current_values = *values;
       this->output_->update_state(this);
       this->next_write_ = true;
+
+      // Check if this is a continuous transformer and publish state if configured
+      if (this->transformer_->is_continuous() && this->continuous_state_publish_interval_ > 0) {
+        uint32_t now = millis();
+        if (now - this->last_continuous_publish_ >= this->continuous_state_publish_interval_) {
+          // Update remote_values to current state for continuous transitions
+          this->remote_values = this->current_values;
+          this->publish_state();
+          this->last_continuous_publish_ = now;
+        }
+      }
     }
 
     if (this->transformer_->is_finished()) {
       // if the transition has written directly to the output, current_values is outdated, so update it
       this->current_values = this->transformer_->get_target_values();
+
+      // Final state update for continuous transformers
+      if (this->transformer_->is_continuous()) {
+        this->remote_values = this->current_values;
+        this->publish_state();
+      }
 
       this->transformer_->stop();
       this->is_transformer_active_ = false;
@@ -169,6 +186,10 @@ void LightState::set_flash_transition_length(uint32_t flash_transition_length) {
 }
 uint32_t LightState::get_flash_transition_length() const { return this->flash_transition_length_; }
 void LightState::set_gamma_correct(float gamma_correct) { this->gamma_correct_ = gamma_correct; }
+
+void LightState::set_continuous_state_publish_interval(uint32_t interval_ms) {
+  this->continuous_state_publish_interval_ = interval_ms;
+}
 void LightState::set_restore_mode(LightRestoreMode restore_mode) { this->restore_mode_ = restore_mode; }
 void LightState::set_initial_state(const LightStateRTCState &initial_state) { this->initial_state_ = initial_state; }
 bool LightState::supports_effects() { return !this->effects_.empty(); }

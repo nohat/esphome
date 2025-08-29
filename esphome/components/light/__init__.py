@@ -63,6 +63,9 @@ from .types import (  # noqa
     light_ns,
 )
 
+# Light-specific configuration constants
+CONF_CONTINUOUS_STATE_PUBLISH_INTERVAL = "continuous_state_publish_interval"
+
 CODEOWNERS = ["@esphome/core"]
 IS_PLATFORM_COMPONENT = True
 
@@ -126,6 +129,9 @@ BRIGHTNESS_ONLY_LIGHT_SCHEMA = LIGHT_SCHEMA.extend(
         ): cv.positive_time_period_milliseconds,
         cv.Optional(
             CONF_FLASH_TRANSITION_LENGTH, default="0s"
+        ): cv.positive_time_period_milliseconds,
+        cv.Optional(
+            CONF_CONTINUOUS_STATE_PUBLISH_INTERVAL, default="0ms"
         ): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_EFFECTS): validate_effects(MONOCHROMATIC_EFFECTS),
     }
@@ -239,6 +245,16 @@ async def setup_light_core_(light_var, output_var, config):
         cg.add(light_var.set_flash_transition_length(flash_transition_length))
     if (gamma_correct := config.get(CONF_GAMMA_CORRECT)) is not None:
         cg.add(light_var.set_gamma_correct(gamma_correct))
+    if (
+        continuous_state_publish_interval := config.get(
+            CONF_CONTINUOUS_STATE_PUBLISH_INTERVAL
+        )
+    ) is not None:
+        cg.add(
+            light_var.set_continuous_state_publish_interval(
+                continuous_state_publish_interval
+            )
+        )
     effects = await cg.build_registry_list(
         EFFECTS_REGISTRY, config.get(CONF_EFFECTS, [])
     )

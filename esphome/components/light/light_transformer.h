@@ -28,6 +28,9 @@ class LightTransformer {
   virtual const LightColorValues &get_start_values() const = 0;
   virtual const LightColorValues &get_target_values() const = 0;
 
+  /// Returns true if this is a continuous transformer (for state publishing)
+  virtual bool is_continuous() const { return false; }
+
  protected:
   uint32_t start_time_;
 };
@@ -79,6 +82,8 @@ class ContinuousTransformer : public LightTransformer {
 
   const LightColorValues &get_start_values() const override { return this->start_values_; }
   const LightColorValues &get_target_values() const override { return this->start_values_; }
+
+  bool is_continuous() const override { return true; }
 
  protected:
   /// Get elapsed time in milliseconds since start

@@ -114,12 +114,149 @@ void LightCall::perform() {
     // Also set light color values when starting an effect
     // For example to turn off the light
     this->parent_->set_immediately_(v, true);
+  } else if (this->has_brightness_move_()) {
+    // BRIGHTNESS MOVE (Dynamic Control)
+    if (this->publish_) {
+      const char *direction_str =
+          (*this->brightness_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP) ? "UP" : "DOWN";
+      ESP_LOGD(TAG, "  Brightness move: %s at speed %.2f", direction_str, *this->brightness_move_speed_);
+    }
+    this->parent_->start_continuous_brightness(*this->brightness_move_direction_, *this->brightness_move_speed_);
+    // Set current light values but don't publish, continuous transition will handle that
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_brightness_step_()) {
+    // BRIGHTNESS STEP
+    if (this->publish_) {
+      const char *direction_str =
+          (*this->brightness_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP) ? "UP" : "DOWN";
+      ESP_LOGD(TAG, "  Brightness step: %s by %.2f over %ums", direction_str, *this->brightness_step_size_,
+               *this->brightness_step_time_);
+    }
+    float delta = (*this->brightness_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP)
+                      ? *this->brightness_step_size_
+                      : -*this->brightness_step_size_;
+    this->parent_->step_brightness(delta, *this->brightness_step_time_);
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_brightness_move_to_level_()) {
+    // BRIGHTNESS MOVE TO LEVEL
+    if (this->publish_) {
+      ESP_LOGD(TAG, "  Brightness move to %.2f over %ums", *this->brightness_target_level_,
+               *this->brightness_target_time_);
+    }
+    this->set_brightness(*this->brightness_target_level_);
+    if (*this->brightness_target_time_ > 0) {
+      this->set_transition_length(*this->brightness_target_time_);
+    }
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_hue_move_()) {
+    // HUE MOVE
+    if (this->publish_) {
+      const char *direction_str =
+          (*this->hue_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP) ? "UP" : "DOWN";
+      ESP_LOGD(TAG, "  Hue move: %s at speed %.2f degrees/sec", direction_str, *this->hue_move_speed_);
+    }
+    this->parent_->start_continuous_hue(*this->hue_move_direction_, *this->hue_move_speed_);
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_hue_step_()) {
+    // HUE STEP
+    if (this->publish_) {
+      const char *direction_str =
+          (*this->hue_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP) ? "UP" : "DOWN";
+      ESP_LOGD(TAG, "  Hue step: %s by %.2f degrees over %ums", direction_str, *this->hue_step_size_,
+               *this->hue_step_time_);
+    }
+    float delta = (*this->hue_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP) ? *this->hue_step_size_
+                                                                                               : -*this->hue_step_size_;
+    this->parent_->step_hue(delta, *this->hue_step_time_, *this->hue_path_);
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_hue_move_to_level_()) {
+    // HUE MOVE TO LEVEL
+    if (this->publish_) {
+      ESP_LOGD(TAG, "  Hue move to %.2f degrees over %ums", *this->hue_target_level_, *this->hue_target_time_);
+    }
+    this->parent_->transition_to_hue(*this->hue_target_level_, *this->hue_target_time_, *this->hue_path_);
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_saturation_move_()) {
+    // SATURATION MOVE
+    if (this->publish_) {
+      const char *direction_str =
+          (*this->saturation_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP) ? "UP" : "DOWN";
+      ESP_LOGD(TAG, "  Saturation move: %s at speed %.2f", direction_str, *this->saturation_move_speed_);
+    }
+    this->parent_->start_continuous_saturation(*this->saturation_move_direction_, *this->saturation_move_speed_);
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_saturation_step_()) {
+    // SATURATION STEP
+    if (this->publish_) {
+      const char *direction_str =
+          (*this->saturation_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP) ? "UP" : "DOWN";
+      ESP_LOGD(TAG, "  Saturation step: %s by %.2f over %ums", direction_str, *this->saturation_step_size_,
+               *this->saturation_step_time_);
+    }
+    float delta = (*this->saturation_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP)
+                      ? *this->saturation_step_size_
+                      : -*this->saturation_step_size_;
+    this->parent_->step_saturation(delta, *this->saturation_step_time_);
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_saturation_move_to_level_()) {
+    // SATURATION MOVE TO LEVEL
+    if (this->publish_) {
+      ESP_LOGD(TAG, "  Saturation move to %.2f over %ums", *this->saturation_target_level_,
+               *this->saturation_target_time_);
+    }
+    this->set_saturation(*this->saturation_target_level_);
+    if (*this->saturation_target_time_ > 0) {
+      this->set_transition_length(*this->saturation_target_time_);
+    }
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_color_temperature_move_()) {
+    // COLOR TEMPERATURE MOVE
+    if (this->publish_) {
+      const char *direction_str =
+          (*this->color_temperature_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP) ? "UP" : "DOWN";
+      ESP_LOGD(TAG, "  Color temperature move: %s at speed %.2f mireds/sec", direction_str,
+               *this->color_temperature_move_speed_);
+    }
+    this->parent_->start_continuous_color_temperature(*this->color_temperature_move_direction_,
+                                                      *this->color_temperature_move_speed_);
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_color_temperature_step_()) {
+    // COLOR TEMPERATURE STEP
+    if (this->publish_) {
+      const char *direction_str =
+          (*this->color_temperature_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP) ? "UP" : "DOWN";
+      ESP_LOGD(TAG, "  Color temperature step: %s by %.2f mireds over %ums", direction_str,
+               *this->color_temperature_step_size_, *this->color_temperature_step_time_);
+    }
+    float delta = (*this->color_temperature_move_direction_ == TransitionDirection::TRANSITION_DIRECTION_UP)
+                      ? *this->color_temperature_step_size_
+                      : -*this->color_temperature_step_size_;
+    this->parent_->step_color_temperature(delta, *this->color_temperature_step_time_);
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_color_temperature_move_to_level_()) {
+    // COLOR TEMPERATURE MOVE TO LEVEL
+    if (this->publish_) {
+      ESP_LOGD(TAG, "  Color temperature move to %.2f mireds over %ums", *this->color_temperature_target_level_,
+               *this->color_temperature_target_time_);
+    }
+    this->set_color_temperature(*this->color_temperature_target_level_);
+    if (*this->color_temperature_target_time_ > 0) {
+      this->set_transition_length(*this->color_temperature_target_time_);
+    }
+    this->parent_->set_immediately_(v, false);
+  } else if (this->has_brightness_stop_()) {
+    // BRIGHTNESS STOP (Dynamic Control)
+    if (this->publish_) {
+      ESP_LOGD(TAG, "  Stopping continuous brightness transition");
+    }
+    this->parent_->stop_continuous_transition();
+    this->parent_->set_immediately_(v, this->publish_);
   } else {
     // INSTANT CHANGE
     this->parent_->set_immediately_(v, this->publish_);
   }
 
-  if (!this->has_transition_()) {
+  if (!this->has_transition_() && !this->has_any_color_move_()) {
     this->parent_->target_state_reached_callback_.call();
   }
   if (this->publish_) {
@@ -297,6 +434,16 @@ LightColorValues LightCall::validate_() {
   if (this->has_flash_() && this->has_transition_()) {
     ESP_LOGW(TAG, "'%s': flash cannot be used with transition", name);
     this->transition_length_.reset();
+  }
+
+  // Validate dynamic control conflicts
+  if ((this->has_any_color_move_() || this->has_any_color_step_() || this->has_any_color_move_to_level_() ||
+       this->has_brightness_stop_()) &&
+      (this->has_transition_() || this->has_flash_() || this->has_effect_())) {
+    ESP_LOGW(TAG, "'%s': dynamic control cannot be used with transition/flash/effect", name);
+    this->transition_length_.reset();
+    this->flash_length_.reset();
+    this->effect_.reset();
   }
 
   if (!this->has_transition_() && !this->has_flash_() && (!this->has_effect_() || *this->effect_ == 0) &&
@@ -715,6 +862,96 @@ LightCall &LightCall::set_saturation(float saturation) {
 LightCall &LightCall::set_saturation_if_supported(float saturation) {
   if (this->get_active_color_mode_() & ColorCapability::RGB)
     this->set_saturation(saturation);
+  return *this;
+}
+
+LightCall &LightCall::set_brightness_move(TransitionDirection direction, float speed) {
+  this->brightness_move_direction_ = direction;
+  this->brightness_move_speed_ = speed;
+  this->brightness_stop_ = false;
+  return *this;
+}
+
+LightCall &LightCall::set_brightness_stop() {
+  this->brightness_stop_ = true;
+  this->brightness_move_direction_.reset();
+  this->brightness_move_speed_.reset();
+  return *this;
+}
+
+LightCall &LightCall::set_brightness_step(TransitionDirection direction, float step_size, uint32_t transition_time_ms) {
+  this->brightness_move_direction_ = direction;
+  this->brightness_step_size_ = step_size;
+  this->brightness_step_time_ = transition_time_ms;
+  this->brightness_stop_ = false;
+  return *this;
+}
+
+LightCall &LightCall::set_brightness_move_to_level(float target_level, uint32_t transition_time_ms) {
+  this->brightness_target_level_ = target_level;
+  this->brightness_target_time_ = transition_time_ms;
+  this->brightness_stop_ = false;
+  return *this;
+}
+
+LightCall &LightCall::set_hue_move(TransitionDirection direction, float speed) {
+  this->hue_move_direction_ = direction;
+  this->hue_move_speed_ = speed;
+  return *this;
+}
+
+LightCall &LightCall::set_hue_step(TransitionDirection direction, float step_degrees, uint32_t transition_time_ms,
+                                   HueTransitionPath path) {
+  this->hue_move_direction_ = direction;
+  this->hue_step_size_ = step_degrees;
+  this->hue_step_time_ = transition_time_ms;
+  this->hue_path_ = path;
+  return *this;
+}
+
+LightCall &LightCall::set_hue_move_to_level(float target_hue, uint32_t transition_time_ms, HueTransitionPath path) {
+  this->hue_target_level_ = target_hue;
+  this->hue_target_time_ = transition_time_ms;
+  this->hue_path_ = path;
+  return *this;
+}
+
+LightCall &LightCall::set_saturation_move(TransitionDirection direction, float speed) {
+  this->saturation_move_direction_ = direction;
+  this->saturation_move_speed_ = speed;
+  return *this;
+}
+
+LightCall &LightCall::set_saturation_step(TransitionDirection direction, float step_size, uint32_t transition_time_ms) {
+  this->saturation_move_direction_ = direction;
+  this->saturation_step_size_ = step_size;
+  this->saturation_step_time_ = transition_time_ms;
+  return *this;
+}
+
+LightCall &LightCall::set_saturation_move_to_level(float target_saturation, uint32_t transition_time_ms) {
+  this->saturation_target_level_ = target_saturation;
+  this->saturation_target_time_ = transition_time_ms;
+  return *this;
+}
+
+LightCall &LightCall::set_color_temperature_move(TransitionDirection direction, float speed) {
+  this->color_temperature_move_direction_ = direction;
+  this->color_temperature_move_speed_ = speed;
+  return *this;
+}
+
+LightCall &LightCall::set_color_temperature_step(TransitionDirection direction, float step_mireds,
+                                                 uint32_t transition_time_ms) {
+  this->color_temperature_move_direction_ = direction;
+  this->color_temperature_step_size_ = step_mireds;
+  this->color_temperature_step_time_ = transition_time_ms;
+  return *this;
+}
+
+LightCall &LightCall::set_color_temperature_move_to_level(float target_mireds, uint32_t transition_time_ms) {
+  this->color_temperature_target_level_ = target_mireds;
+  this->color_temperature_target_time_ = transition_time_ms;
   return *this;
 }
 

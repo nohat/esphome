@@ -2,6 +2,7 @@
 
 #include "esphome/core/optional.h"
 #include "light_color_values.h"
+#include "light_traits.h"
 #include <set>
 
 namespace esphome {
@@ -140,6 +141,40 @@ class LightCall {
   /// Set the saturation property if the light supports RGB.
   LightCall &set_saturation_if_supported(float saturation);
 
+  /// Start continuous brightness transition (move) with direction and speed.
+  LightCall &set_brightness_move(TransitionDirection direction, float speed = 1.0f);
+  /// Step brightness by amount with transition time.
+  LightCall &set_brightness_step(TransitionDirection direction, float step_size, uint32_t transition_time_ms = 0);
+  /// Move brightness to specific level with transition time.
+  LightCall &set_brightness_move_to_level(float target_level, uint32_t transition_time_ms = 0);
+
+  /// Start continuous hue transition (move) with direction and speed.
+  LightCall &set_hue_move(TransitionDirection direction, float speed = 30.0f);
+  /// Step hue by degrees with transition time and path.
+  LightCall &set_hue_step(TransitionDirection direction, float step_degrees, uint32_t transition_time_ms = 0,
+                          HueTransitionPath path = HUE_PATH_SHORTEST);
+  /// Move hue to specific value with transition time and path.
+  LightCall &set_hue_move_to_level(float target_hue, uint32_t transition_time_ms = 0,
+                                   HueTransitionPath path = HUE_PATH_SHORTEST);
+
+  /// Start continuous saturation transition (move) with direction and speed.
+  LightCall &set_saturation_move(TransitionDirection direction, float speed = 0.5f);
+  /// Step saturation by amount with transition time.
+  LightCall &set_saturation_step(TransitionDirection direction, float step_size, uint32_t transition_time_ms = 0);
+  /// Move saturation to specific level with transition time.
+  LightCall &set_saturation_move_to_level(float target_saturation, uint32_t transition_time_ms = 0);
+
+  /// Start continuous color temperature transition (move) with direction and speed.
+  LightCall &set_color_temperature_move(TransitionDirection direction, float speed = 50.0f);
+  /// Step color temperature by mireds with transition time.
+  LightCall &set_color_temperature_step(TransitionDirection direction, float step_mireds,
+                                        uint32_t transition_time_ms = 0);
+  /// Move color temperature to specific value with transition time.
+  LightCall &set_color_temperature_move_to_level(float target_mireds, uint32_t transition_time_ms = 0);
+
+  /// Stop any active continuous brightness transition.
+  LightCall &set_brightness_stop();
+
   /** Set the RGB color of the light by RGB values.
    *
    * Please note that this only changes the color of the light, not the brightness.
@@ -182,6 +217,35 @@ class LightCall {
   bool has_transition_() { return this->transition_length_.has_value(); }
   bool has_flash_() { return this->flash_length_.has_value(); }
   bool has_effect_() { return this->effect_.has_value(); }
+  bool has_brightness_move_() { return this->brightness_move_direction_.has_value(); }
+  bool has_brightness_stop_() { return this->brightness_stop_; }
+  bool has_brightness_step_() { return this->brightness_step_size_.has_value(); }
+  bool has_brightness_move_to_level_() { return this->brightness_target_level_.has_value(); }
+
+  bool has_hue_move_() { return this->hue_move_direction_.has_value(); }
+  bool has_hue_step_() { return this->hue_step_size_.has_value(); }
+  bool has_hue_move_to_level_() { return this->hue_target_level_.has_value(); }
+
+  bool has_saturation_move_() { return this->saturation_move_direction_.has_value(); }
+  bool has_saturation_step_() { return this->saturation_step_size_.has_value(); }
+  bool has_saturation_move_to_level_() { return this->saturation_target_level_.has_value(); }
+
+  bool has_color_temperature_move_() { return this->color_temperature_move_direction_.has_value(); }
+  bool has_color_temperature_step_() { return this->color_temperature_step_size_.has_value(); }
+  bool has_color_temperature_move_to_level_() { return this->color_temperature_target_level_.has_value(); }
+
+  bool has_any_color_move_() {
+    return has_brightness_move_() || has_hue_move_() || has_saturation_move_() || has_color_temperature_move_();
+  }
+
+  bool has_any_color_step_() {
+    return has_brightness_step_() || has_hue_step_() || has_saturation_step_() || has_color_temperature_step_();
+  }
+
+  bool has_any_color_move_to_level_() {
+    return has_brightness_move_to_level_() || has_hue_move_to_level_() || has_saturation_move_to_level_() ||
+           has_color_temperature_move_to_level_();
+  }
 
   LightState *parent_;
   optional<bool> state_;
@@ -200,6 +264,38 @@ class LightCall {
   optional<uint32_t> effect_;
   bool publish_{true};
   bool save_{true};
+  optional<TransitionDirection> brightness_move_direction_;
+  optional<float> brightness_move_speed_;
+  bool brightness_stop_{false};
+
+  // Color control move parameters
+  optional<TransitionDirection> hue_move_direction_;
+  optional<float> hue_move_speed_;
+  optional<TransitionDirection> saturation_move_direction_;
+  optional<float> saturation_move_speed_;
+  optional<TransitionDirection> color_temperature_move_direction_;
+  optional<float> color_temperature_move_speed_;
+
+  // Step parameters
+  optional<float> brightness_step_size_;
+  optional<uint32_t> brightness_step_time_;
+  optional<float> hue_step_size_;
+  optional<uint32_t> hue_step_time_;
+  optional<HueTransitionPath> hue_path_;
+  optional<float> saturation_step_size_;
+  optional<uint32_t> saturation_step_time_;
+  optional<float> color_temperature_step_size_;
+  optional<uint32_t> color_temperature_step_time_;
+
+  // Move to level parameters
+  optional<float> brightness_target_level_;
+  optional<uint32_t> brightness_target_time_;
+  optional<float> hue_target_level_;
+  optional<uint32_t> hue_target_time_;
+  optional<float> saturation_target_level_;
+  optional<uint32_t> saturation_target_time_;
+  optional<float> color_temperature_target_level_;
+  optional<uint32_t> color_temperature_target_time_;
 };
 
 }  // namespace light

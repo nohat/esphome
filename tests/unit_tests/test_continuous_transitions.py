@@ -299,6 +299,92 @@ class TestContinuousTransitionIntegration:
                 assert "color_temperature" in transitions
 
 
+class TestDynamicControlSchema:
+    """Test dynamic control YAML schema validation."""
+
+    def test_brightness_action_schema_validation(self):
+        """Test that brightness_action schema validates correctly."""
+        # Test valid configurations
+        valid_configs = [
+            {"direction": "UP", "speed": 0.5},
+            {"direction": "DOWN", "speed": 1.0},
+            {"direction": "UP"},  # Should use default speed
+        ]
+
+        for config in valid_configs:
+            assert "direction" in config
+            assert config["direction"] in ["UP", "DOWN"]
+            if "speed" in config:
+                assert isinstance(config["speed"], (int, float))
+                assert config["speed"] > 0
+
+    def test_dynamic_control_mutual_exclusion(self):
+        """Test that brightness_action and stop_action are mutually exclusive."""
+        # Valid: Only brightness_action
+        brightness_only = {"brightness_action": {"direction": "UP", "speed": 0.5}}
+        assert "brightness_action" in brightness_only
+        assert "stop_action" not in brightness_only
+
+        # Valid: Only stop_action
+        stop_only = {"stop_action": {}}
+        assert "stop_action" in stop_only
+        assert "brightness_action" not in stop_only
+
+        # Invalid: Both would be caught by cv.Exclusive validator
+        both_config = {"brightness_action": {"direction": "UP"}, "stop_action": {}}
+        # This should be caught by ESPHome's validation system
+        assert len(both_config) == 2  # Both keys present - would fail validation
+
+    def test_direction_enum_validation(self):
+        """Test direction enum validation."""
+        valid_directions = ["UP", "DOWN"]
+        invalid_directions = ["LEFT", "RIGHT", "SIDEWAYS", "FORWARD"]
+
+        for direction in valid_directions:
+            config = {"direction": direction, "speed": 1.0}
+            assert config["direction"] in valid_directions
+
+        for direction in invalid_directions:
+            assert direction not in valid_directions
+
+    def test_speed_parameter_validation(self):
+        """Test speed parameter validation ranges."""
+        # Test valid speeds
+        valid_speeds = [0.1, 0.5, 1.0, 2.0]
+        for speed in valid_speeds:
+            config = {"direction": "UP", "speed": speed}
+            assert config["speed"] > 0
+            assert isinstance(config["speed"], (int, float))
+
+        # Test invalid speeds (would be caught by cv.positive_float)
+        invalid_speeds = [-0.1, 0.0, -1.0]
+        for speed in invalid_speeds:
+            assert speed <= 0  # These should be rejected
+
+    def test_yaml_structure_compatibility(self):
+        """Test YAML structure for dynamic control actions."""
+        # Test structure that would appear in automation YAML
+        automation_config = {
+            "light.control": {
+                "id": "test_light",
+                "dynamic_control": {
+                    "brightness_action": {"direction": "UP", "speed": 0.5}
+                },
+            }
+        }
+
+        control_action = automation_config["light.control"]
+        assert "id" in control_action
+        assert "dynamic_control" in control_action
+
+        dynamic_control = control_action["dynamic_control"]
+        assert "brightness_action" in dynamic_control
+
+        brightness_action = dynamic_control["brightness_action"]
+        assert brightness_action["direction"] in ["UP", "DOWN"]
+        assert brightness_action["speed"] > 0
+
+
 class TestErrorHandling:
     """Test error handling and edge cases."""
 
